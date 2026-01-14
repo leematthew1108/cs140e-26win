@@ -26,9 +26,11 @@ enum {
     GPIO_BASE = 0x20200000,
     gpio_set0  = (GPIO_BASE + 0x1C),
     gpio_clr0  = (GPIO_BASE + 0x28),
-    gpio_lev0  = (GPIO_BASE + 0x34)
+    gpio_lev0  = (GPIO_BASE + 0x34), 
 
     // <you will need other values from BCM2835!>
+    gpio_sel0 = (GPIO_BASE),
+    three_bit_mask = 0x00000007
 };
 
 //
@@ -43,10 +45,22 @@ void gpio_set_output(unsigned pin) {
     if(pin > GPIO_MAX_PIN)
         gpio_panic("illegal pin=%d\n", pin);
 
-  // Implement this.
+    // Implement this.
+    // need to read the correct value
+    unsigned address = gpio_sel0 + (pin/10)*4; // pointer arithmetic
+    unsigned value = GET32(address);
+    unsigned shift = pin;
+    while (shift >= 10) {
+        shift -= 10;
+    }
+    value &= ~(three_bit_mask << (3*shift));
+    value |= 1 << (3*shift);
+    PUT32(address, value);
 }
 
 // Set GPIO <pin> = on.
+// GPIO Set 0 sets pins 0-31
+// GPIO Set 1 sets pins 32-53
 void gpio_set_on(unsigned pin) {
     if(pin > GPIO_MAX_PIN)
         gpio_panic("illegal pin=%d\n", pin);
@@ -55,6 +69,7 @@ void gpio_set_on(unsigned pin) {
     // NOTE: 
     //  - If you want to be slick, you can exploit the fact that 
     //    SET0/SET1 are contiguous in memory.
+    PUT32(gpio_set0 + (pin/32)*4, (1 << pin%32));
 }
 
 // Set GPIO <pin> = off
@@ -66,6 +81,7 @@ void gpio_set_off(unsigned pin) {
     // NOTE: 
     //  - If you want to be slick, you can exploit the fact that 
     //    CLR0/CLR1 are contiguous in memory.
+    PUT32(gpio_clr0 + (pin/32)*4, (1 << pin%32));
 }
 
 // Set <pin> to <v> (v \in {0,1})
@@ -86,6 +102,14 @@ void gpio_set_input(unsigned pin) {
         gpio_panic("illegal pin=%d\n", pin);
 
     // Implement.
+    unsigned address = gpio_sel0 + (pin/10)*4;
+    unsigned value = GET32(address);
+    unsigned shift = pin;
+    while (shift >= 10) {
+        shift -= 10;
+    }
+    value &= ~(three_bit_mask << (3*shift));
+    PUT32(address, value);
 }
 
 // Return 1 if <pin> is on, 0 if not.
@@ -95,5 +119,9 @@ int gpio_read(unsigned pin) {
     if(pin > GPIO_MAX_PIN)
         gpio_panic("illegal pin=%d\n", pin);
 
-    return v;
+
+    // read pin
+    v = GET32(gpio_set0 + pin/32);
+    unsigned mask = 1 << pin%32;
+    return v & mask;
 }
