@@ -1,0 +1,3 @@
+TRACE:0: calling pi code
+TRACE:1: PUT32(0x20200020) = 0x8000
+fake-pi.c:PUT32:176:PANIC:write to illegal address: 20200020

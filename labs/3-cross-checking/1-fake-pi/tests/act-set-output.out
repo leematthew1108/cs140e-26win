@@ -1,0 +1,2 @@
+TRACE:0: calling pi code
+fake-pi.c:GET32:204:PANIC:read of illegal address: 20200010
