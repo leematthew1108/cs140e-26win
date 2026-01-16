@@ -22,19 +22,10 @@ TEST_SRC += $(wildcard ./[1]-*.c)
 TEST_SRC += $(wildcard ./[2]-*.c) 
 TEST_SRC += $(wildcard ./[5]-*.c)
 TEST_SRC += $(wildcard ./act-*.c)
-TEST_SRC += $(wildcard ./prog-*.c)
-
-# for "Step 3: extend fake-pi.c to handle the act led (pin 47)."
-TEST_SRC := $(wildcard ./act-*.c)
-
-# Checkoff uses all tests
-CHKOFF_SRC := $(wildcard ./[0125]-*.c) $(wildcard ./prog-*.c) $(wildcard ./act-*.c)
-
-TEST_SRC += $(wildcard ./act-*.c)
 TEST_SRC += $(wildcard ./prog-*.c) 
 
 # Checkoff uses all tests
-CHKOFF_SRC := $(wildcard ./[012]-*.c) $(wildcard ./prog-*.c) $(wildcard ./act-*.c)
+CHKOFF_SRC := $(wildcard ./[0125]-*.c) $(wildcard ./prog-*.c) $(wildcard ./act-*.c)
 CHKOFF_OUT := $(CHKOFF_SRC:.c=.out)
 
 ########################################################################

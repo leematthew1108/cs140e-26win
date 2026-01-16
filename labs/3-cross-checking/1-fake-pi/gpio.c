@@ -37,19 +37,17 @@ enum {
 // New for lab 3
 // set GPIO function for <pin> (input, output, alt...).  settings for other
 // pins should be unchanged.
-void gpio_set_function(unsigned pin, gpio_func_t function) {
+void gpio_set_function(unsigned pin, gpio_func_t func) {
     if(pin > GPIO_MAX_PIN)
-        gpio_panic("illegal pin=%d\n", pin);
-
-    if (function < 0 || function > 7) {
-        gpio_panic("illegal function=%d\n", function);
-    }
+            gpio_panic("illegal pin=%d\n", pin);
+    if((func & 0b111) != func)
+        gpio_panic("illegal func=%x\n", func);
 
     unsigned address = gpio_sel0 + (pin/10)*4;
     unsigned value = GET32(address);
     unsigned shift = pin % 10;
     value &= ~(three_bit_mask << (3*shift));
-    value |= function << (3*shift);
+    value |= func << (3*shift);
     PUT32(address, value);
 }
 
