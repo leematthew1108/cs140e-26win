@@ -7,5 +7,6 @@ fake-pi: initializing PUT32(0x20200028) = 0x2ae8944a
 TRACE:0: calling pi code
 about to write 1 to act
 TRACE:1: PUT32(0x20200020) = 0x8000
-fake-pi.c:PUT32:176:PANIC:write to illegal address: 20200020
-TEST crashed: exit value=1
+about to write 0 to act
+TRACE:2: PUT32(0x2020002c) = 0x8000
+TRACE: pi exited cleanly: 7 calls to random

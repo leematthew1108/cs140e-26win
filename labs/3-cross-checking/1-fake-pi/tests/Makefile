@@ -20,6 +20,16 @@ TEST_SRC += 0-gpio-write-17.c
 TEST_SRC := $(wildcard ./[0]-*.c)
 TEST_SRC += $(wildcard ./[1]-*.c)
 TEST_SRC += $(wildcard ./[2]-*.c) 
+TEST_SRC += $(wildcard ./[5]-*.c)
+TEST_SRC += $(wildcard ./act-*.c)
+TEST_SRC += $(wildcard ./prog-*.c)
+
+# for "Step 3: extend fake-pi.c to handle the act led (pin 47)."
+TEST_SRC := $(wildcard ./act-*.c)
+
+# Checkoff uses all tests
+CHKOFF_SRC := $(wildcard ./[0125]-*.c) $(wildcard ./prog-*.c) $(wildcard ./act-*.c)
+
 TEST_SRC += $(wildcard ./act-*.c)
 TEST_SRC += $(wildcard ./prog-*.c) 
 
