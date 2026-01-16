@@ -117,5 +117,5 @@ int gpio_read(unsigned pin) {
     // read pin
     v = GET32(gpio_lev0 + pin/32*4);
     unsigned mask = 1 << pin%32;
-    return v & mask;
+    return (v & mask) != 0;
 }
