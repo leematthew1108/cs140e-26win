@@ -87,7 +87,26 @@ software_interrupt_asm:
     @   6 restore regs: must be identical to what got pushed 
     @     at step (1)
     @   - return from the exception (look at interrupt_asm)
-    asm_not_implemented()
+    
+    @ 1 save regs
+    push {r0-r12, lr}
+
+    @ 2 lr offset: lr already points to next instruction
+    
+    @ 3 mov original r0 into r1
+    mov r1, r0
+
+    @ 4 mov pointer to syscall inst into r0
+    sub r0, lr, #4
+
+    @ 5 call syscall_vector C function
+    bl syscall_vector
+
+    @ 6 restore regs
+    str r0, [sp] @ override stored r0 with new return value from syscall
+    pop {r0-r12, lr}
+
+    @ return from syscall handler
     movs pc, lr
 
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -132,3 +151,67 @@ get_super_lr:
     mov r0, lr
     msr cpsr_c, r1
     bx lr
+
+
+@ Part 1: User mode system call (mostly copied from above code)
+.globl _interrupt_table_user
+.globl _interrupt_table_user_end
+_interrupt_table_user:
+  ldr pc, _reset_asm
+  ldr pc, _undefined_instruction_asm
+  ldr pc, _software_interrupt_asm_user   @ changed (points to new handler for user mode)
+  ldr pc, _prefetch_abort_asm
+  ldr pc, _data_abort_asm
+  ldr pc, _reset_asm
+  ldr pc, _interrupt_asm
+fast_interrupt_asm_user:
+  sub   lr, lr, #4
+  push  {lr}
+  push  {r0-r12}
+  mov   r0, lr
+  bl    fast_interrupt_vector
+  pop   {r0-r12}
+  ldm   sp!, {pc}^
+
+@ new label for software interrupt asm user
+_software_interrupt_asm_user: .word software_interrupt_asm_user
+_interrupt_table_user_end:
+
+@ new swi handler
+software_interrupt_asm_user:
+    @ We entered via swi from User Mode.
+    @ We are now in Supervisor Mode.
+    @ LR holds the User PC (next instruction).
+
+    @ issue: if i were to abort, super mode stack has been appended to
+    @ another person does sys call, appends to that
+    @ grow shte stack with some random stacks (unbounded growth)
+    @ multiple user threads (cannot execute sys calls at the same time)
+
+    @ each user thread has its own kernel stack 
+
+    @ cross checking with threads 
+
+    @ make a full kernel on a multi-core cpu.. 
+
+
+    @ how to test? multiple user threads, execte a blocking sys-call (500ms timer, swithces to thread that blocks again.. )
+    
+    @ save regs
+    push {r0-r12, lr}
+
+    @ move original r0 to r1 (prep for C function call)
+    mov r1, r0        
+    sub r0, lr, #4   @ mov pointer to syscall instruction into r0   
+
+    @ call C function 
+    bl syscall_vector
+
+    @ override r0 with function return value
+    str r0, [sp]
+
+    @ restore regs
+    pop {r0-r12, lr}
+
+    @ return from syscall handler
+    movs pc, lr

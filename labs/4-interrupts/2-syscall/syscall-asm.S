@@ -31,4 +31,22 @@ MK_FN(syscall_illegal)
 @
 @ does not return
 MK_FN(run_user_code_asm)
-    asm_not_implemented()
+    @ Prefetch Flush
+    @ arm1176.pdf 3-79
+    @ Flush Prefetch Buffer is MCR p15, 0, <Rd>, c7, c5, 4
+    @ Rd is a scratch register (chose r2)
+    mov r2, #0
+    mcr p15, 0, r2, c7, c5, 4
+
+    @ Switch to User Mode
+    @ From the ARM manual (A2-14), User Mode is 0b10000
+    cps #0x10
+
+    @ Set the stack pointer to passed in address
+    mov sp, r1
+
+    @ jump to address in <pc> which is r0
+    blx r0
+    
+    @ from rpi-asm.h (annotate impossible to reach locations, user code should never return, exit thru syscall)
+    asm_not_reached()

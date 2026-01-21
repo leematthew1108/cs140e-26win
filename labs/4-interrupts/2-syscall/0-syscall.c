@@ -23,12 +23,18 @@ void interrupt_vector(unsigned pc) {
 int syscall_vector(unsigned pc, uint32_t r0) {
     uint32_t inst=0, sys_num=0;
 
+    // get actual instruction (which points to sys call instruction) and system call number
+    inst = *(uint32_t *)pc;
+    sys_num = inst & 0x00ffffff; // lower 24 bits to get encoding
+
     // figure out the instruction and the system call number.
-    unimplemented();
+    // unimplemented();
+
     trace("inst=%b, sys_num=%d\n", inst, sys_num);
 
     switch(sys_num) {
     case 1: 
+            // r0 holds the "msg" pointer from syscall_hello(msg)
             trace("syscall: <%s>\n", (const char *)r0); 
             return 0;
     default: 
