@@ -36,7 +36,15 @@ static volatile unsigned *hist = 0;
 // - allocate <hist> with <kmalloc> using <pc_min> and
 //   <pc_max> to compute code size.
 static unsigned gprof_init(void) {
-    todo("allocate <hist> using <kmalloc>.  initialize etc\n");
+    // compute pc_min and pc_max using code start/end symbols in memmap
+    // this is for bounds checking
+    pc_min = (unsigned)__code_start__;
+    pc_max = (unsigned)__code_end__;
+    hist_n = (pc_max - pc_min) / 4; // instructions are 4 bytes
+
+    // allocate hist using hist_n
+    hist = (volatile unsigned *)kmalloc(hist_n * sizeof(unsigned));
+
     return hist_n;
 }
 
@@ -44,8 +52,14 @@ static unsigned gprof_init(void) {
 //    few lines of code
 static void gprof_inc(unsigned pc) {
     assert(pc >= pc_min && pc <= pc_max);
-    todo("make sure you bounds check\n");
-    unimplemented();
+    // Bounds check (make sure inside code segment)
+    if(!hist || pc < pc_min || pc >= pc_max)
+        return;
+
+    // offset
+    unsigned idx = (pc - pc_min) / 4; 
+
+    hist[idx]++;
 }
 
 // print out all samples whose count > min_val
@@ -58,7 +72,19 @@ static void gprof_inc(unsigned pc) {
 //  - we expect pc's to be in GET32, PUT32, different
 //    uart routines, or rpi_wait.  (why?)
 static void gprof_dump(unsigned min_val) {
-    todo("make sure you don't trace this routine!\n");
+    // Need to manually stop interrupts while dumping.
+    disable_interrupts();
+    printk("--- gprof dump (min samples: %d) ---\n", min_val);
+    
+    for(unsigned i = 0; i < hist_n; i++) {
+        if(hist[i] >= min_val) {
+            unsigned pc = pc_min + (i * 4);
+            printk("pc=%x: count=%d\n", pc, hist[i]);
+        }
+    }
+
+    printk("------------------------------------\n");
+    enable_interrupts();
 }
 
 /**************************************************************
