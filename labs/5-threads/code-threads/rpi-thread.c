@@ -120,7 +120,10 @@ rpi_thread_t *rpi_fork(void (*code)(void *arg), void *arg) {
      * - see <code-asm-checks/5-write-regs.c> for how to 
      *   coordinate offsets b/n asm and C code.
      */
-    todo("initialize thread stack");
+    // todo("initialize thread stack");
+    // Part 1: RTC threads
+    t->fn = code;
+    t->arg = arg;
 
     // should check that <t->saved_sp> points within the 
     // thread stack.
@@ -141,7 +144,9 @@ void rpi_exit(int exitcode) {
 
     // if you switch back to the scheduler thread put this in:
     //      th_trace("done running threads, back to scheduler\n");
-    todo("implement rpi_exit");
+    // todo("implement rpi_exit");
+    // part 1: panic
+    panic("we don't handle this.. (yet?)");
 
     // should never return.
     not_reached();
@@ -181,7 +186,13 @@ void rpi_thread_start(void) {
     if(!scheduler_thread)
         scheduler_thread = th_alloc();
 
-    todo("implement the rest of rpi_thread_start");
+    // todo("implement the rest of rpi_thread_start");
+    while(!Q_empty(&runq)) {
+        cur_thread = Q_pop(&runq); // remove threads in FIFO order
+        (*cur_thread->fn)(cur_thread->arg); // call its function
+        th_free(cur_thread); // free thread (adds to free queue)
+    }
+    goto end; // necessary? (syntax question)
 
 end:
     RZ_CHECK();
