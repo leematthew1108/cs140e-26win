@@ -11,8 +11,17 @@
 //     stack pointer and compare.
 #include "rpi.h"
 
+int foo(int a) {
+    int temp = a + 5;
+    int address = (uintptr_t)&temp;
+    return address;
+}
+
 int stack_grows_down(void) {
-    todo("implement this routine\n");
+    //todo("implement this routine\n");
+    int temp = 5;
+    int foo_temp = foo(1);
+    return foo_temp < ((uintptr_t)&temp);
 }
 
 void notmain(void) {

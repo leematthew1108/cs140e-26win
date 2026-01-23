@@ -21,14 +21,16 @@ void notmain() {
     assert(res == &v[0]);
 
     // note this also shows you the order of writes.
-    if(v[2] == val2 && v[1] == val1) {
+    if(v[3] == val2 && v[2] == val1) {
         assert(v[3] == 4);
         assert(v[0] == 1);
-        todo("what does this imply?\n");
+        //todo("what does this imply?\n");
+        trace("push first then decrement \n");
     } else if(v[1] == val2 && v[0] == val1) {
         assert(v[3] == 4);
         assert(v[2] == 3);
-        todo("what does this imply?\n");
+        //todo("what does this imply?\n");
+        trace("decrement stack pointer first, then push.\n");
     } else 
         panic("unexpected result\n");
 }
