@@ -192,7 +192,6 @@ void rpi_thread_start(void) {
         (*cur_thread->fn)(cur_thread->arg); // call its function
         th_free(cur_thread); // free thread (adds to free queue)
     }
-    goto end; // necessary? (syntax question)
 
 end:
     RZ_CHECK();
