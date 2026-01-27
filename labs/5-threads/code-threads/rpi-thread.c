@@ -88,11 +88,11 @@ enum {
     R9_OFFSET,
     R10_OFFSET,
     R11_OFFSET,
-    R14_OFFSET = 8,
-    LR_OFFSET = 8
+    R14_OFFSET = 8,     // same
+    LR_OFFSET = 8       // same
 };
 
-// return pointer to the current thread.  
+// return pointer to the current thread.   
 rpi_thread_t *rpi_cur_thread(void) {
     assert(cur_thread);
     RZ_CHECK();
@@ -121,9 +121,21 @@ rpi_thread_t *rpi_fork(void (*code)(void *arg), void *arg) {
      *   coordinate offsets b/n asm and C code.
      */
     // todo("initialize thread stack");
-    // Part 1: RTC threads
+    // only needed for part 1
     t->fn = code;
     t->arg = arg;
+
+    // write stack pointer to the top of the stack. stack growns down. 
+    t->saved_sp = &t->stack[THREAD_MAXSTACK];
+    t->saved_sp -= 9; // space for r4-r11, l4
+
+    // store arg and code into two of the saved (callee) registers
+    // choosing to store arg in r4 and code in r5
+    t->saved_sp[R4_OFFSET] = (uint32_t)arg;
+    t->saved_sp[R5_OFFSET] = (uint32_t)code;
+
+    // store address of rpi_init_trampoline into the lr
+    t->saved_sp[LR_OFFSET] = (uint32_t)rpi_init_trampoline;
 
     // should check that <t->saved_sp> points within the 
     // thread stack.
@@ -146,7 +158,19 @@ void rpi_exit(int exitcode) {
     //      th_trace("done running threads, back to scheduler\n");
     // todo("implement rpi_exit");
     // part 1: panic
-    panic("we don't handle this.. (yet?)");
+    // panic("we don't handle this.. (yet?)");
+
+    rpi_thread_t *old_thread = cur_thread;
+    if (Q_empty(&runq)) {
+        cur_thread = scheduler_thread;
+        th_trace("done running threads, back to scheduler\n");
+    }
+    else 
+        cur_thread = Q_pop(&runq);
+    
+    rpi_cswitch(&old_thread->saved_sp, cur_thread->saved_sp);
+
+    // TODO: figure out when/how to free the old thread
 
     // should never return.
     not_reached();
@@ -164,7 +188,15 @@ void rpi_yield(void) {
     // NOTE: if you switch to another thread: print the statement:
     //     th_trace("switching from tid=%d to tid=%d\n", old->tid, t->tid);
 
-    todo("implement the rest of rpi_yield");
+    // todo("implement the rest of rpi_yield");
+    if (Q_empty(&runq)) {
+        return;
+    }
+    rpi_thread_t *old_thread = cur_thread;
+    Q_append(&runq, old_thread);
+    cur_thread = Q_pop(&runq);
+    th_trace("switching from tid=%d to tid=%d\n", old_thread->tid, cur_thread->tid);
+    rpi_cswitch(&old_thread->saved_sp, cur_thread->saved_sp);
 }
 
 /*
@@ -186,12 +218,17 @@ void rpi_thread_start(void) {
     if(!scheduler_thread)
         scheduler_thread = th_alloc();
 
+    // Context switch from scheduler_thread to the curr thread
+    cur_thread = Q_pop(&runq);
+    rpi_cswitch(&scheduler_thread->saved_sp, cur_thread->saved_sp);
+
     // todo("implement the rest of rpi_thread_start");
-    while(!Q_empty(&runq)) {
-        cur_thread = Q_pop(&runq); // remove threads in FIFO order
-        (*cur_thread->fn)(cur_thread->arg); // call its function
-        th_free(cur_thread); // free thread (adds to free queue)
-    }
+    // this is from part 1 (RTC threads)
+    // while(!Q_empty(&runq)) {
+    //     cur_thread = Q_pop(&runq); // remove threads in FIFO order
+    //     (*cur_thread->fn)(cur_thread->arg); // call its function
+    //     th_free(cur_thread); // free thread (adds to free queue)
+    // }
 
 end:
     RZ_CHECK();
