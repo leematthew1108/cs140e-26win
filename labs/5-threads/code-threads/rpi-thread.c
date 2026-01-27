@@ -167,10 +167,21 @@ void rpi_exit(int exitcode) {
     }
     else 
         cur_thread = Q_pop(&runq);
-    
+
+    // this is still dangerous in the sense that the memory is 
+    // "logically" freed but i am still "using" it in the cswitch
+    // even tho i'm saving the old thread's stack knowing it will 
+    // never be needed again
+    // rpi_cswitch happens RIGHT AFTER i free the old thread
+    // so no allocs will happen between free and rpi_cswitch
+    // and after cswitch i will never need that old thread's stack again
+    th_free(old_thread);
+
     rpi_cswitch(&old_thread->saved_sp, cur_thread->saved_sp);
 
-    // TODO: figure out when/how to free the old thread
+    // TODO: figure out when/how to free the old thread *robustly*
+    // maybe set a global static variable free_thread and then
+    // free that thread when entering trampoline function? 
 
     // should never return.
     not_reached();

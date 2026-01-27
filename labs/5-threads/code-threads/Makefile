@@ -17,12 +17,12 @@ S := $(CS140E_2026_PATH)/libpi/staff-objs/
 STAFF_OBJS += $(S)/staff-kmalloc.o
 
 # switch these when implemented.
-# COMMON_SRC += rpi-thread-asm.S 
-STAFF_OBJS += $(S)/staff-rpi-thread-asm.o
+COMMON_SRC += rpi-thread-asm.S 
+# STAFF_OBJS += $(S)/staff-rpi-thread-asm.o
 
 # switch these when implemented.
-# COMMON_SRC += rpi-thread.c
-STAFF_OBJS += $(S)/staff-rpi-thread.o
+COMMON_SRC += rpi-thread.c
+# STAFF_OBJS += $(S)/staff-rpi-thread.o
 
 # my cksum (from COMMON_SRC): 2069988948 453
 # staff cksum (from STAFF_OBJS): 2069988948 453
