@@ -19,6 +19,7 @@
 #include "rpi.h"
 #include "boot-crc32.h"  // has the crc32 implementation.
 #include "boot-defs.h"   // protocol opcode values.
+#include "memmap.h"     // memory locations for program (linker)
 
 /***************************************************************
  * 1. Helper routines.  You shouldn't need to modify these for
@@ -32,7 +33,7 @@
 // you didn't read soon enough)
 //
 // After you get the simple version working, you should fix 
-// it by making a timeout version.
+// it by making a timeout version. *TODO*
 static inline uint32_t boot_get32(void) {
     uint32_t u = boot_get8();
         u |= (uint32_t)boot_get8() << 8;
@@ -118,8 +119,15 @@ boot_err(uint32_t error_opcode, const char *msg) {
 //     counter can overflow.
 static unsigned 
 has_data_timeout(unsigned timeout) {
-    boot_todo("has_data_timeout: implement this routine");
-    return 0;
+    // boot_todo("has_data_timeout: implement this routine");
+    uint32_t s = timer_get_usec();
+    while (uart_has_data() != 1) {
+        uint32_t e = timer_get_usec();
+        if ((e - s) >= timeout) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 // iterate:
@@ -136,7 +144,14 @@ has_data_timeout(unsigned timeout) {
 //      Its from this loop (since the LED goes on for each 
 //      received packet)
 static void wait_for_data(unsigned usec_timeout) {
-    boot_todo("wait_for_data: implement this routine");
+    // boot_todo("wait_for_data: implement this routine");
+    while (1) {
+        boot_put32(GET_PROG_INFO);
+        if (has_data_timeout(usec_timeout) == 1) {
+            return;
+        }
+        boot_putk("pi waiting for data");
+    }
 }
 
 // IMPLEMENT this routine.
@@ -154,7 +169,15 @@ uint32_t get_code(void) {
 
     // 2. expect: [PUT_PROG_INFO, addr, nbytes, cksum] 
     //    we echo cksum back in step 4 to help debugging.
-    boot_todo("wait for laptop/server response: echo checksum back");
+    //boot_todo("wait for laptop/server response: echo checksum back");
+    if (boot_get32() != PUT_PROG_INFO) {
+        boot_putk("Did not receive PUT_PROG_INFO");
+        rpi_reboot(); 
+    }
+    addr = boot_get32();
+    unsigned n_bytes = boot_get32();
+    uint32_t unix_crc = boot_get32();
+    boot_putk("PUT_PROG_INFO, addr, nbytes, cksum received");
 
     // 3. If the binary will collide with us, abort with a BOOT_ERROR. 
     // 
@@ -169,26 +192,47 @@ uint32_t get_code(void) {
     //       - libpi/include/memmap.h
     //       - libpi/memmap 
     //    for definitions.
-    boot_todo("check that binary will not hit the bootloader code");
+    // boot_todo("check that binary will not hit the bootloader code");
+    
+    if ((addr + n_bytes) >= (unsigned)PUT32) {
+        boot_putk("Code collision. Rebooting"); 
+        boot_put32(BOOT_ERROR);
+        rpi_reboot();
+    }
 
     // 4. send [GET_CODE, cksum] back.
-    boot_todo("send [GET_CODE, cksum] back\n");
+    // boot_todo("send [GET_CODE, cksum] back\n");
+    boot_putk("Sending GET_CODE and cksum back");
+    boot_put32(GET_CODE);
+    boot_put32(unix_crc);
 
     // 5. we expect: [PUT_CODE, <code>]
     //  read each sent byte and write it starting at 
     //  <addr> using PUT8
     //
     // common mistake: computing the offset incorrectly.
-    boot_todo("boot_get8() each code byte and use PUT8() to write it to memory");
+    // boot_todo("boot_get8() each code byte and use PUT8() to write it to memory");
+    if (boot_get32() != PUT_CODE) {
+        boot_putk("Did not receive PUT_CODE");
+        rpi_reboot(); 
+    }
+    for (int i = 0; i < n_bytes; i++) {
+        PUT8(addr+i, boot_get8());
+    }
 
     // 6. verify the cksum of the copied code using:
     //         boot-crc32.h:crc32.
     //    if fails, abort with a BOOT_ERROR.
-    boot_todo("verify the checksum of copied code");
+    // boot_todo("verify the checksum of copied code");
+    if (unix_crc != crc32((void*)addr, n_bytes)) {
+        boot_putk("cksum of copied code does not match");
+        boot_put32(BOOT_ERROR);
+        rpi_reboot();
+    }
 
     // 7. send back a BOOT_SUCCESS!
-    boot_putk("<PUT YOUR NAME HERE>: success: Received the program!");
-    boot_todo("fill in your name above");
+    boot_putk("Matthew Lee: success: Received the program!");
+    // boot_todo("fill in your name above");
 
     // woo!
     boot_put32(BOOT_SUCCESS);

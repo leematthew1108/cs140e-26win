@@ -236,7 +236,7 @@ void simple_boot(int fd, uint32_t boot_addr, const uint8_t *buf, unsigned n) {
     // 1. reply to the GET_PROG_INFO
     //todo("reply to GET_PROG_INFO");
     trace_put32(fd, PUT_PROG_INFO);
-    trace_put32(fd, ARMBASE); // or boot_addr? 
+    trace_put32(fd, ARMBASE); 
     trace_put32(fd, n); // n_bytes?
     trace_put32(fd, crc32(buf,n));
 
