@@ -27,5 +27,31 @@ void *read_file(unsigned *size, const char *name) {
     //    - fclose() the file descriptor
     //    - make sure any padding bytes have zeros.
     //    - return it.   
-    unimplemented();
+    //unimplemented();
+
+    struct stat st;
+    if (stat(name, &st) < 0) {
+        panic("stat failed");
+    }
+
+    unsigned n = (unsigned)st.st_size;
+    unsigned char *buf = calloc(n+4, 1);  // hack to zero fill up to next multiple of 4
+    if (!buf) {
+        panic("calloc failed");
+    }
+
+    int fd = open(name, O_RDONLY);
+    if (fd < 0) {
+        panic("open failed");
+    }
+
+    if (n)                      // only read when file is not zero length
+        read_exact(fd, buf, n);
+
+    if (close(fd) < 0) {
+        panic("close failed");
+    }
+
+    *size = n;
+    return buf;
 }
