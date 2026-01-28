@@ -234,19 +234,39 @@ void simple_boot(int fd, uint32_t boot_addr, const uint8_t *buf, unsigned n) {
     //      same value as an opcode and get hijacked.
 
     // 1. reply to the GET_PROG_INFO
-    todo("reply to GET_PROG_INFO");
+    //todo("reply to GET_PROG_INFO");
+    trace_put32(fd, PUT_PROG_INFO);
+    trace_put32(fd, ARMBASE); // or boot_addr? 
+    trace_put32(fd, n); // n_bytes?
+    trace_put32(fd, crc32(buf,n));
 
     // 2. drain any extra GET_PROG_INFOS
-    todo("drain any extra GET_PROG_INFOS");
+    //todo("drain any extra GET_PROG_INFOS");
+    // 3. check that we received a GET_CODE
+    // todo("check that we received a GET_CODE");
+    // this both drains extra GET_PROG_INFOS and
+    // checks we received a GET_CODE
+    while((op = get_op(fd)) != GET_CODE) {} 
 
     // 3. check that we received a GET_CODE
-    todo("check that we received a GET_CODE");
-
+    // todo("check that we received a GET_CODE");
     // 4. handle it: send a PUT_CODE + the code.
-    todo("send PUT_CODE + the code in <buf>");
+    // todo("send PUT_CODE + the code in <buf>");
+    uint32_t pi_crc = trace_get32(fd);
+    if (pi_crc != crc32(buf, n)) {
+        panic("crc received from pi DOES NOT MATCH the crc value sent");
+    }
+    trace_put32(fd, PUT_CODE);
+    // send actual code
+    for (int i = 0; i < n; i++) {
+        trace_put8(fd, buf[i]);
+    }
 
     // 5. Wait for BOOT_SUCCESS
-    todo("wait for BOOT_SUCCESS");
+    // todo("wait for BOOT_SUCCESS");
+    while((op = get_op(fd)) != BOOT_SUCCESS) {
+        get_uint32(fd);
+    } 
 
     boot_output("bootloader: Done.\n");
 }
