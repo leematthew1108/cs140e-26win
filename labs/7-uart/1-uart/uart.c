@@ -87,6 +87,21 @@ static void emergency_printk(const char *fmt, ...)  {
 // END of the bit bang code.
 #endif
 
+// from BCM2835 aux datasheet
+enum {
+    AUX_IRQ = 0x20215000, // base
+    AUX_ENB = AUX_IRQ + 4, // turn uart on/off
+    // gap
+    AUX_MU_IO = AUX_IRQ + 0x40, // read/write from uart fifos
+    AUX_MU_IER = AUX_IRQ + 0x44, // enable interrupts
+    AUX_MU_IIR = AUX_IRQ + 0x48, // shows interrupt status. Clear tx/rx fifos
+    AUX_MU_LCR = AUX_IRQ + 0x4C, // set uart to 7 bit or 8 bit mode (0b11 for 8 bit)
+    AUX_MU_MCR = AUX_IRQ + 0x50, // check if transmit fifo can accept, check if receive fifo has data
+    AUX_MU_CNTL = AUX_IRQ + 0x60, // turn tx/rx on/off
+    AUX_MU_STAT = AUX_IRQ + 0x64, // also tells space available
+    AUX_MU_BAUD = AUX_IRQ + 0x68, // set the baud rate
+};
+
 
 //*****************************************************
 // the rest you should implement.
@@ -102,6 +117,39 @@ void uart_init(void) {
     // NOTE: for cross-checking: make sure write UART 
     // addresses in order
 
+    dev_barrier();
+
+    // turn on the UART in AUX. (read-modify-write to not kill the SPI) (page 9)
+    unsigned auxenb = GET32(AUX_ENB) | 1; // set bit 0 
+    PUT32(AUX_ENB, auxenb);
+
+    // Immediately disable tx/rx (you don't want to send garbage) (page 17)
+    unsigned mu_ctrl = GET32(AUX_MU_CNTL);
+    unsigned int mask = 0xFFFFFFFC; // bit 0 and bit 1 are 0, rest 1s
+    PUT32(AUX_MU_CNTL, mu_ctrl & mask);
+ 
+    // Find and clear all parts of its state (e.g., FIFO queues) 
+    // since we are not absolutely positive they do not hold garbage.
+    // AUX_MU_IIR_REG, page 13
+    PUT32(AUX_MU_IIR, (1 << 1) | (1 << 2)); // set bit 1 and bit 2 to clear rx and tx fifos
+
+    // Disable interrupts. (page 12)
+    // default interrupts are set to 0?? (i think nothing has to be done.. )
+
+    // set UART to 8-bit mode
+    // erata in datasheet: data size is a two bit field
+    // write 0b11 for 8bit
+    unsigned lcr = GET32(AUX_MU_LCR);
+    PUT32(AUX_MU_LCR, lcr | 0x3);
+
+    // Configure baud rate: 115200 baud (page 19)
+    unsigned valueToSet = 115200; // baud
+    PUT32(AUX_MU_BAUD,  valueToSet & 0xFFFF);
+    
+    // now, enable tx/rx (page 17)
+    mu_ctrl = GET32(AUX_MU_CNTL);
+    mask = 0xFFFFFFFC; // bit 0 and bit 1 are 0, rest 1s
+    PUT32(AUX_MU_CNTL, (mu_ctrl & mask) | 0x3);
 }
 
 // disable the uart: make sure all bytes have been
