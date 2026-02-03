@@ -1,0 +1,54 @@
+TRACE: out file for <1-hello>
+fake-pi: initializing PUT32(0x20200000) = 0x327b23c6
+fake-pi: initializing PUT32(0x20200004) = 0x643c9869
+fake-pi: initializing PUT32(0x20200008) = 0x66334873
+fake-pi: initializing PUT32(0x2020000c) = 0x74b0dc51
+fake-pi: initializing PUT32(0x2020001c) = 0x19495cff
+fake-pi: initializing PUT32(0x20200028) = 0x2ae8944a
+TRACE:0: calling pi code
+TRACE:1: dev_barrier [0]
+TRACE:2: GET32(0x20200004) = 0x643c9869
+TRACE:3: PUT32(0x20200004) = 0x643ca869
+TRACE:4: GET32(0x20200004) = 0x643ca869
+TRACE:5: PUT32(0x20200004) = 0x643d2869
+TRACE:6: dev_barrier [1]
+TRACE:7: GET32(0x20215004) = 0x0
+TRACE:8: PUT32(0x20215004) = 0x1
+TRACE:9: dev_barrier [2]
+TRACE:10: UART: PUT32(0x20215060) = 0x0 [is on! off=0]
+TRACE:11: UART: turning UART off PUT32(20215060)=0
+TRACE:12: UART: PUT32(0x20215044) = 0x0 [buffered]
+TRACE:13: UART: PUT32(0x20215048) = 0x6 [buffered]
+TRACE:14: UART: PUT32(0x2021504c) = 0x3 [buffered]
+TRACE:15: UART: PUT32(0x20215050) = 0x0 [buffered]
+TRACE:16: UART: PUT32(0x20215060) = 0x3 [buffered]
+TRACE:17: UART: PUT32(0x20215068) = 0x10e [buffered]
+TRACE:18: UART: turned UART on PUT32(20215060)=3
+TRACE:19: dev_barrier [3]
+TRACE:20: dev_barrier [4]
+TRACE:21: GET32(0x20215064) = 0x216231b
+TRACE:22: UART: PUT32(0x20215040) = 0x68 [is on! off=0]
+TRACE:23: dev_barrier [5]
+TRACE:24: dev_barrier [6]
+TRACE:25: GET32(0x20215064) = 0x1f16e9e8
+TRACE:26: GET32(0x20215064) = 0x1190cde7
+TRACE:27: UART: PUT32(0x20215040) = 0x65 [is on! off=0]
+TRACE:28: dev_barrier [7]
+TRACE:29: dev_barrier [8]
+TRACE:30: GET32(0x20215064) = 0x66ef438d
+TRACE:31: GET32(0x20215064) = 0x140e0f76
+TRACE:32: UART: PUT32(0x20215040) = 0x6c [is on! off=0]
+TRACE:33: dev_barrier [9]
+TRACE:34: dev_barrier [10]
+TRACE:35: GET32(0x20215064) = 0x3352255a
+TRACE:36: UART: PUT32(0x20215040) = 0x6c [is on! off=0]
+TRACE:37: dev_barrier [11]
+TRACE:38: dev_barrier [12]
+TRACE:39: GET32(0x20215064) = 0x109cf92e
+TRACE:40: UART: PUT32(0x20215040) = 0x6f [is on! off=0]
+TRACE:41: dev_barrier [13]
+TRACE:42: dev_barrier [14]
+TRACE:43: GET32(0x20215064) = 0xded7263
+TRACE:44: UART: PUT32(0x20215040) = 0xa [is on! off=0]
+TRACE:45: dev_barrier [15]
+TRACE: pi exited cleanly: 28 calls to random

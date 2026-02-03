@@ -96,7 +96,7 @@ enum {
     AUX_MU_IER = AUX_IRQ + 0x44, // enable interrupts
     AUX_MU_IIR = AUX_IRQ + 0x48, // shows interrupt status. Clear tx/rx fifos
     AUX_MU_LCR = AUX_IRQ + 0x4C, // set uart to 7 bit or 8 bit mode (0b11 for 8 bit)
-    AUX_MU_MCR = AUX_IRQ + 0x50, // check if transmit fifo can accept, check if receive fifo has data
+    AUX_MU_MCR = AUX_IRQ + 0x50, // controls modem signal? don't need this.. (based on annotation)
     AUX_MU_CNTL = AUX_IRQ + 0x60, // turn tx/rx on/off
     AUX_MU_STAT = AUX_IRQ + 0x64, // also tells space available
     AUX_MU_BAUD = AUX_IRQ + 0x68, // set the baud rate
@@ -134,31 +134,32 @@ void uart_init(void) {
     dev_barrier();
 
     // Immediately disable tx/rx (you don't want to send garbage) (page 17)
-    unsigned mu_ctrl = GET32(AUX_MU_CNTL);
-    unsigned int mask = 0xFFFFFFFC; // bit 0 and bit 1 are 0, rest 1s
-    PUT32(AUX_MU_CNTL, mu_ctrl & mask);
+    PUT32(AUX_MU_CNTL, 0);
+
+    // afterwards, do reads/writes in increasing memory address order to match staff checksum
+
+    // Disable interrupts. (page 12)
+    PUT32(AUX_MU_IER, 0);
  
     // Find and clear all parts of its state (e.g., FIFO queues) 
     // since we are not absolutely positive they do not hold garbage.
     // AUX_MU_IIR_REG, page 13
     PUT32(AUX_MU_IIR, (1 << 1) | (1 << 2)); // set bit 1 and bit 2 to clear rx and tx fifos
 
-    // Disable interrupts. (page 12)
-    PUT32(AUX_MU_IER, 0);
-
     // set UART to 8-bit mode
     // erata in datasheet: data size is a two bit field
     // write 0b11 for 8bit
     PUT32(AUX_MU_LCR, 3);
+
+    // from staff trace, set AUX_MU_MCR to 0? not sure why but doing it to match trace
+    PUT32(AUX_MU_MCR, 0);
 
     // Configure baud rate: 115200 baud (page 19)
     unsigned valueToSet = 270; // baudrate calculated from page 11
     PUT32(AUX_MU_BAUD,  valueToSet & 0xFFFF);
     
     // now, enable tx/rx (page 17)
-    mu_ctrl = GET32(AUX_MU_CNTL);
-    mask = 0xFFFFFFFC; // bit 0 and bit 1 are 0, rest 1s
-    PUT32(AUX_MU_CNTL, (mu_ctrl & mask) | 0x3);
+    PUT32(AUX_MU_CNTL, 3);
 
     dev_barrier();
 }
@@ -195,19 +196,17 @@ int uart_get8(void) {
 // for at least one byte.  returns 0 otherwise.
 int uart_can_put8(void) {
     // TODO: implement this!
-    dev_barrier();
     int can_put8 = GET32(AUX_MU_STAT) & BIT(1);
-    dev_barrier();
     return can_put8 != 0;
 }
 
 // put one byte on the TX FIFO, if necessary, waits
 // until the FIFO has space.
+// 2071394643 228 0-uart-putc.out
 int uart_put8(uint8_t c) {
     // TODO: implement this!
     dev_barrier();
     while (uart_can_put8() != 1) {} // wait until tx fifo has space
-    dev_barrier();
     PUT32(AUX_MU_IO, c);
     dev_barrier();
     return 1;

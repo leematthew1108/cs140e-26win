@@ -1,7 +1,7 @@
 LIBNAME = libpi-fake.a
 BUILD_DIR = ./objs
 
-LPP = $(CS140E_2026_PATH)libpi
+LPP = $(CS140E_2026_PATH)/libpi
 
 # all the .c files used to generate fake programs on Unix.
 # 1. get all the the routines from current directory.
@@ -10,6 +10,7 @@ LIB_SRC  = fake-pi.c  fake-random.c  pi-random.c
 LIB_SRC  += $(LPP)/libc/printk.c
 LIB_SRC  += $(LPP)/libc/putk.c
 LIB_SRC  += $(LPP)/libc/putchar.c
+LIB_SRC  += $(LPP)/libc/gpio-panic.c
 LIB_SRC  += $(LPP)/staff-src/clean-reboot.c
 
 # 3. pull in your gpio.c and uart.
