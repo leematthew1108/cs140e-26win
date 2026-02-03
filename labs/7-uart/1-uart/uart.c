@@ -102,6 +102,7 @@ enum {
     AUX_MU_BAUD = AUX_IRQ + 0x68, // set the baud rate
 };
 
+#define BIT(n) (1u << (n)) // helpful for bitmasking
 
 //*****************************************************
 // the rest you should implement.
@@ -120,8 +121,6 @@ void uart_init(void) {
     dev_barrier();
     // first, GPIO pins should be set up before enabling the UART
     // pins 14 and 15, alt fun 5 (page 102-104)
-    gpio_set_on(14);
-    gpio_set_on(15);
     gpio_set_function(14, GPIO_FUNC_ALT5);
     gpio_set_function(15, GPIO_FUNC_ALT5);
 
@@ -145,13 +144,12 @@ void uart_init(void) {
     PUT32(AUX_MU_IIR, (1 << 1) | (1 << 2)); // set bit 1 and bit 2 to clear rx and tx fifos
 
     // Disable interrupts. (page 12)
-    // default interrupts are set to 0?? (i think nothing has to be done.. )
+    PUT32(AUX_MU_IER, 0);
 
     // set UART to 8-bit mode
     // erata in datasheet: data size is a two bit field
     // write 0b11 for 8bit
-    unsigned lcr = GET32(AUX_MU_LCR);
-    PUT32(AUX_MU_LCR, lcr | 0x3);
+    PUT32(AUX_MU_LCR, 3);
 
     // Configure baud rate: 115200 baud (page 19)
     unsigned valueToSet = 270; // baudrate calculated from page 11
@@ -170,6 +168,7 @@ void uart_init(void) {
 void uart_disable(void) {
     // TODO: implement this!
     dev_barrier();
+    uart_flush_tx();
     // turn off (disable) the UART in AUX. (read-modify-write to not kill the SPI) (page 9)
     unsigned auxenb = GET32(AUX_ENB) & (0xFFFFFFFE); // set bit 0 to 0
     PUT32(AUX_ENB, auxenb);
@@ -183,13 +182,13 @@ int uart_get8(void) {
     // todo("implement this\n");
     while(1) {
         dev_barrier();
-        unsigned rx_fifo = GET32(AUX_MU_STAT) & ~(0xFFFFFFFE);
-        dev_barrier();
-        if (!rx_fifo) {
-            continue; // blocks until there is at least 1 byte in the fifo
+        if (GET32(AUX_MU_STAT) & BIT(0)) {
+            break;
         }
-        return (int)(GET32(AUX_MU_IO) & ~(0xFFFFFF00));
     }
+    unsigned v = GET32(AUX_MU_IO) & 0xFF;
+    dev_barrier();
+    return (int)v;
 }
 
 // returns 1 if the hardware TX (output) FIFO has room
@@ -197,7 +196,7 @@ int uart_get8(void) {
 int uart_can_put8(void) {
     // TODO: implement this!
     dev_barrier();
-    int can_put8 = GET32(AUX_MU_STAT) & ~(0xFFFFFFFD);
+    int can_put8 = GET32(AUX_MU_STAT) & BIT(1);
     dev_barrier();
     return can_put8 != 0;
 }
@@ -220,7 +219,7 @@ int uart_put8(uint8_t c) {
 int uart_has_data(void) {
     // TODO: implement this!
     dev_barrier();
-    unsigned rx_fifo = GET32(AUX_MU_STAT) & ~(0xFFFFFFFE);
+    unsigned rx_fifo = GET32(AUX_MU_STAT) & BIT(0);
     dev_barrier();
     return rx_fifo;
 }
@@ -240,11 +239,9 @@ int uart_get8_async(void) {
 int uart_tx_is_empty(void) {
     // TODO: implement this!
     dev_barrier();
-    unsigned stat_reg = GET32(AUX_MU_STAT);
+    unsigned s = GET32(AUX_MU_STAT);
     dev_barrier();
-    int tx_fifo_empty = (stat_reg & ~0xFFFFFEFF) != 0;
-    int tx_idle = (stat_reg & ~0xFFFFFFF7) != 0;
-    return tx_fifo_empty && tx_idle;
+    return (s & BIT(9)) != 0;
 }
 
 // return only when the TX FIFO is empty AND the
