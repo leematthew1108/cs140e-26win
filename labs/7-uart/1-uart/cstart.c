@@ -4,6 +4,7 @@
 #include "rpi.h"
 #include "cycle-count.h"
 #include "memmap.h"
+#include "gpio.h"
 
 void uart_destroy(void) {
     // hack to make sure aux is off.

@@ -112,16 +112,27 @@ enum {
 //
 //  later: should add an init that takes a baud rate.
 void uart_init(void) {
-    todo("start here\n");
+    // todo("start here\n");
 
     // NOTE: for cross-checking: make sure write UART 
     // addresses in order
+
+    dev_barrier();
+    // first, GPIO pins should be set up before enabling the UART
+    // pins 14 and 15, alt fun 5 (page 102-104)
+    gpio_set_on(14);
+    gpio_set_on(15);
+    gpio_set_function(14, GPIO_FUNC_ALT5);
+    gpio_set_function(15, GPIO_FUNC_ALT5);
 
     dev_barrier();
 
     // turn on the UART in AUX. (read-modify-write to not kill the SPI) (page 9)
     unsigned auxenb = GET32(AUX_ENB) | 1; // set bit 0 
     PUT32(AUX_ENB, auxenb);
+
+    // gap between memory addresses (could be some other device in between)
+    dev_barrier();
 
     // Immediately disable tx/rx (you don't want to send garbage) (page 17)
     unsigned mu_ctrl = GET32(AUX_MU_CNTL);
@@ -143,39 +154,63 @@ void uart_init(void) {
     PUT32(AUX_MU_LCR, lcr | 0x3);
 
     // Configure baud rate: 115200 baud (page 19)
-    unsigned valueToSet = 115200; // baud
+    unsigned valueToSet = 270; // baudrate calculated from page 11
     PUT32(AUX_MU_BAUD,  valueToSet & 0xFFFF);
     
     // now, enable tx/rx (page 17)
     mu_ctrl = GET32(AUX_MU_CNTL);
     mask = 0xFFFFFFFC; // bit 0 and bit 1 are 0, rest 1s
     PUT32(AUX_MU_CNTL, (mu_ctrl & mask) | 0x3);
+
+    dev_barrier();
 }
 
 // disable the uart: make sure all bytes have been
 // 
 void uart_disable(void) {
     // TODO: implement this!
+    dev_barrier();
+    // turn off (disable) the UART in AUX. (read-modify-write to not kill the SPI) (page 9)
+    unsigned auxenb = GET32(AUX_ENB) & (0xFFFFFFFE); // set bit 0 to 0
+    PUT32(AUX_ENB, auxenb);
+    dev_barrier();
 }
 
 // returns one byte from the RX (input) hardware
 // FIFO.  if FIFO is empty, blocks until there is 
 // at least one byte.
 int uart_get8(void) {
-    todo("implement this\n");
+    // todo("implement this\n");
+    while(1) {
+        dev_barrier();
+        unsigned rx_fifo = GET32(AUX_MU_STAT) & ~(0xFFFFFFFE);
+        dev_barrier();
+        if (!rx_fifo) {
+            continue; // blocks until there is at least 1 byte in the fifo
+        }
+        return (int)(GET32(AUX_MU_IO) & ~(0xFFFFFF00));
+    }
 }
 
 // returns 1 if the hardware TX (output) FIFO has room
 // for at least one byte.  returns 0 otherwise.
 int uart_can_put8(void) {
     // TODO: implement this!
-    return 0;
+    dev_barrier();
+    int can_put8 = GET32(AUX_MU_STAT) & ~(0xFFFFFFFD);
+    dev_barrier();
+    return can_put8 != 0;
 }
 
 // put one byte on the TX FIFO, if necessary, waits
 // until the FIFO has space.
 int uart_put8(uint8_t c) {
     // TODO: implement this!
+    dev_barrier();
+    while (uart_can_put8() != 1) {} // wait until tx fifo has space
+    dev_barrier();
+    PUT32(AUX_MU_IO, c);
+    dev_barrier();
     return 1;
 }
 
@@ -184,7 +219,10 @@ int uart_put8(uint8_t c) {
 //  - 0 otherwise
 int uart_has_data(void) {
     // TODO: implement this!
-    return 0;
+    dev_barrier();
+    unsigned rx_fifo = GET32(AUX_MU_STAT) & ~(0xFFFFFFFE);
+    dev_barrier();
+    return rx_fifo;
 }
 
 // returns:
@@ -201,7 +239,12 @@ int uart_get8_async(void) {
 //  - 0 if not empty.
 int uart_tx_is_empty(void) {
     // TODO: implement this!
-    return 0;
+    dev_barrier();
+    unsigned stat_reg = GET32(AUX_MU_STAT);
+    dev_barrier();
+    int tx_fifo_empty = (stat_reg & ~0xFFFFFEFF) != 0;
+    int tx_idle = (stat_reg & ~0xFFFFFFF7) != 0;
+    return tx_fifo_empty && tx_idle;
 }
 
 // return only when the TX FIFO is empty AND the

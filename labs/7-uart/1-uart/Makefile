@@ -13,7 +13,7 @@ PROGS += output-test-0-hello.c
 
 # swap these if your bootloader doesn't work.
 BOOTLOADER = my-install
-BOOTLOADER = pi-install
+# BOOTLOADER = pi-install
 
 # uncomment to build yours
 COMMON_SRC += uart.c

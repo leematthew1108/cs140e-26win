@@ -1,0 +1,5 @@
+opened tty port </dev/cu.usbserial-210>.
+pi-install: tty-usb=</dev/cu.usbserial-210> program=<./output-test-3-emit.bin> about to boot
+TRACE:simple_boot: sending 4636 bytes, crc32=d7bb9620
+waiting for a start
+my-install: tty-USB read() returned 0 bytes.  r/pi not responding [reboot it?]
