@@ -17,11 +17,15 @@
 #ifndef __VECTOR_BASE_SET_H__
 #define __VECTOR_BASE_SET_H__
 #include "libc/bit-support.h"
+#include "asm-helpers.h"
 
 // use inline assembly to get and return the vector base's 
 // current value.
 static inline void *vector_base_get(void) {
-    todo("implement using inline assembly to get the vec base reg");
+    //todo("implement using inline assembly to get the vec base reg");
+    void *out;
+  	asm volatile("MRC p15, 0, %0, c12, c0, 0" : "=r"(out));
+    return out;
 }
 
 // set vector base register: use inline assembly.  there's only
@@ -29,7 +33,13 @@ static inline void *vector_base_get(void) {
 // use to illustrate a common pattern.
 static inline void vector_base_set_raw(uint32_t v) {
     // make sure you use prefetch flush!
-    todo("implement using inline assembly to set the vec base reg");
+    // todo("implement using inline assembly to set the vec base reg");
+    // need two colons below for write (look into this)
+    // perhaps easier to use macros already defined in asm-helpers.h
+    asm volatile("MCR p15, 0, %0, c12, c0, 0" : : "r"(v));
+
+    // prefletch flush code from rpi-asm.h, using r2 as dummy register
+    prefetch_flush();
 }
 
 // check that not null and alignment is good.
@@ -40,8 +50,9 @@ static inline int vector_base_chk(void *vector_base) {
     // IMPORTANT: most common mistake is to not check alignment
     // correctly. very easy way to get intermittent but violent
     // bugs.
-    todo("check alignment is correct: look at the instruction def!");
-    return 1;
+    //todo("check alignment is correct: look at the instruction def!");
+    unsigned mask = 0x1F; // 0b11111         
+    return ((unsigned)vector_base & mask) == 0;
 }
 
 // set vector base to <vec> and return old value: could have
@@ -53,7 +64,9 @@ vector_base_reset(void *vec) {
     if(!vector_base_chk(vec))
         panic("illegal vector base %p\n", vec);
 
-    todo("get old vector base, set new one\n");
+    //todo("get old vector base, set new one\n");
+    old_vec = vector_base_get();
+    vector_base_set_raw((uint32_t)vec);
 
     // double check that what we set is what we have.
     // 
