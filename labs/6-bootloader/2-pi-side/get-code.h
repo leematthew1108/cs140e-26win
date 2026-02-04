@@ -150,7 +150,6 @@ static void wait_for_data(unsigned usec_timeout) {
         if (has_data_timeout(usec_timeout) == 1) {
             return;
         }
-        boot_putk("pi waiting for data");
     }
 }
 
@@ -171,13 +170,11 @@ uint32_t get_code(void) {
     //    we echo cksum back in step 4 to help debugging.
     //boot_todo("wait for laptop/server response: echo checksum back");
     if (boot_get32() != PUT_PROG_INFO) {
-        boot_putk("Did not receive PUT_PROG_INFO");
         rpi_reboot(); 
     }
     addr = boot_get32();
     unsigned n_bytes = boot_get32();
     uint32_t unix_crc = boot_get32();
-    boot_putk("PUT_PROG_INFO, addr, nbytes, cksum received");
 
     // 3. If the binary will collide with us, abort with a BOOT_ERROR. 
     // 
@@ -195,14 +192,12 @@ uint32_t get_code(void) {
     // boot_todo("check that binary will not hit the bootloader code");
     
     if ((addr + n_bytes) >= (unsigned)PUT32) {
-        boot_putk("Code collision. Rebooting"); 
         boot_put32(BOOT_ERROR);
         rpi_reboot();
     }
 
     // 4. send [GET_CODE, cksum] back.
     // boot_todo("send [GET_CODE, cksum] back\n");
-    boot_putk("Sending GET_CODE and cksum back");
     boot_put32(GET_CODE);
     boot_put32(unix_crc);
 
@@ -213,7 +208,6 @@ uint32_t get_code(void) {
     // common mistake: computing the offset incorrectly.
     // boot_todo("boot_get8() each code byte and use PUT8() to write it to memory");
     if (boot_get32() != PUT_CODE) {
-        boot_putk("Did not receive PUT_CODE");
         rpi_reboot(); 
     }
     for (int i = 0; i < n_bytes; i++) {
@@ -225,13 +219,12 @@ uint32_t get_code(void) {
     //    if fails, abort with a BOOT_ERROR.
     // boot_todo("verify the checksum of copied code");
     if (unix_crc != crc32((void*)addr, n_bytes)) {
-        boot_putk("cksum of copied code does not match");
         boot_put32(BOOT_ERROR);
         rpi_reboot();
     }
 
     // 7. send back a BOOT_SUCCESS!
-    boot_putk("Matthew Lee: success: Received the program!");
+    boot_putk("UART Matthew Lee: success: Received the program!"); // uart added to verify bootloader with my uart works
     // boot_todo("fill in your name above");
 
     // woo!
