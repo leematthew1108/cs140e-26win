@@ -47,3 +47,5 @@ out
 # Editor/IDE files (Just in case)
 .vscode/
 *.swp
+
+*.fake
