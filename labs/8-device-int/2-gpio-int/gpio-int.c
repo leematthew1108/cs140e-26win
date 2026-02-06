@@ -74,7 +74,7 @@ int gpio_event_detected(unsigned pin) {
         panic("Pin >= 32 is invalid");
     // todo("implement: is an event detected?\n");
     dev_barrier();
-    int out = GET32(GPEDS0) & (1u << 17);
+    int out = GET32(GPEDS0) & (1 << pin);
     dev_barrier();
     return out != 0;
 }

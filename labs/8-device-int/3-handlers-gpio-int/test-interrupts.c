@@ -106,7 +106,16 @@ volatile int n_falling;
  *  2. check if it was a falling edge: return 1 if so, 0 otherwise
  */
 int falling_handler(uint32_t pc) {
-    todo("implement this: return 0 if no rising int\n");
+    // todo("implement this: return 0 if no rising int\n");
+    int out = 0;
+    if (gpio_event_detected(in_pin)) {
+        if (gpio_read(in_pin) == 0) {
+            out = 1;
+            n_falling++;
+            gpio_event_clear(in_pin);
+        }
+    }
+    return out;
 }
 
 // initialize for a falling edge
@@ -135,7 +144,16 @@ volatile int n_rising;
  *  2. check if it was a rising edge: return 1 if so, 0 otherwise
  */
 int rising_handler(uint32_t pc) {
-    todo("implement this: return 0 if no rising int\n");
+    // todo("implement this: return 0 if no rising int\n");
+    int out = 0;
+    if (gpio_event_detected(in_pin)) {
+        if (gpio_read(in_pin) == 1) {
+            out = 1;
+            n_rising++;
+            gpio_event_clear(in_pin);
+        }
+    }
+    return out;
 }
 
 static void rising_init_fn(void) {
@@ -183,13 +201,26 @@ void rise_fall_init(void) {
  *  2. return 1 if so.
  */
 int timer_test_handler(uint32_t pc) {
+    int out = 0;
     dev_barrier();
 
     // should look very similar to the timer interrupt handler.
-    todo("implement this by stealing pieces from 4-interrupts/0-timer-int");
+    //todo("implement this by stealing pieces from 4-interrupts/0-timer-int");
+
+    // get the interrupt source
+    unsigned pending = GET32(IRQ_basic_pending);
+
+    // if this isn't true, could be a GPU interrupt 
+    // (as discussed in Broadcom): just return.  
+    // [confusing, since we didn't enable!]
+    if((pending & ARM_Timer_IRQ) == 1) {
+        out = 1;
+        // Clear the ARM Timer interrupt
+        PUT32(ARM_Timer_IRQ_Clear, 1);
+    }
 
     dev_barrier();
-    return 1;
+    return out;
 }
 
 void timer_init_fn(void) {
