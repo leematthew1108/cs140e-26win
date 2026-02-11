@@ -9,7 +9,7 @@ uint32_t rpi_temp_get(void) ;
 //  - cycle_cnt_read();
 //  - timer_get_usec();
 unsigned cyc_per_sec(void) {
-    todo("implement this!\n");
+    //todo("implement this!\n");
 }
 
 
@@ -30,7 +30,9 @@ void notmain(void) {
 
     // convert <x> to C and F
     unsigned C = 0, F = 0;
+    C = x;
+    F = C * 1.8 + 32;
     output("mailbox temp = %x, C=%d F=%d\n", x, C, F); 
 
-    todo("do overclocking!\n");
+    //todo("do overclocking!\n");
 }
