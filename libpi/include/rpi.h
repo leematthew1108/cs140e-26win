@@ -63,6 +63,9 @@ int vsnprintk(char *buf, unsigned buflen, const char *fmt, va_list ap);
 // initialize to baud=115,200
 void uart_init(void);
 
+// another version of uart to set baudrate_reg (needed for overclocking)
+void uart_init_div(unsigned baudrate_reg);
+
 // use the formula: 
 //   baud_reg = 250,000,000/(baud*8) - 1
 // feel free to wrap it up!

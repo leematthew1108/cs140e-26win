@@ -62,6 +62,8 @@ int vsnprintk(char *buf, unsigned buflen, const char *fmt, va_list ap);
 
 // initialize [XXX: we should take a baud rate?]
 void uart_init(void);
+// another version of uart to set baudrate_reg (needed for overclocking)
+void uart_init_div(unsigned baudrate_reg);
 // disable
 void uart_disable(void);
 

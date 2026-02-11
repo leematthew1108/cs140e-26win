@@ -154,9 +154,56 @@ void uart_init(void) {
     // from staff trace, set AUX_MU_MCR to 0? not sure why but doing it to match trace
     PUT32(AUX_MU_MCR, 0);
 
-    // Configure baud rate: 115200 baud (page 19)
+    // Configure baud rate: 115200 baud (page 19) 
     unsigned valueToSet = 270; // baudrate calculated from page 11
     PUT32(AUX_MU_BAUD,  valueToSet & 0xFFFF);
+    
+    // now, enable tx/rx (page 17)
+    PUT32(AUX_MU_CNTL, 3);
+
+    dev_barrier();
+}
+
+void uart_init_div(unsigned baudrate_reg) {
+    dev_barrier();
+    // first, GPIO pins should be set up before enabling the UART
+    // pins 14 and 15, alt fun 5 (page 102-104)
+    gpio_set_function(14, GPIO_FUNC_ALT5);
+    gpio_set_function(15, GPIO_FUNC_ALT5);
+
+    dev_barrier();
+
+    // turn on the UART in AUX. (read-modify-write to not kill the SPI) (page 9)
+    unsigned auxenb = GET32(AUX_ENB) | 1; // set bit 0 
+    PUT32(AUX_ENB, auxenb);
+
+    // gap between memory addresses (could be some other device in between)
+    dev_barrier();
+
+    // Immediately disable tx/rx (you don't want to send garbage) (page 17)
+    PUT32(AUX_MU_CNTL, 0);
+
+    // afterwards, do reads/writes in increasing memory address order to match staff checksum
+
+    // Disable interrupts. (page 12)
+    PUT32(AUX_MU_IER, 0);
+ 
+    // Find and clear all parts of its state (e.g., FIFO queues) 
+    // since we are not absolutely positive they do not hold garbage.
+    // AUX_MU_IIR_REG, page 13
+    PUT32(AUX_MU_IIR, (1 << 1) | (1 << 2)); // set bit 1 and bit 2 to clear rx and tx fifos
+
+    // set UART to 8-bit mode
+    // erata in datasheet: data size is a two bit field
+    // write 0b11 for 8bit
+    PUT32(AUX_MU_LCR, 3);
+
+    // from staff trace, set AUX_MU_MCR to 0? not sure why but doing it to match trace
+    PUT32(AUX_MU_MCR, 0);
+
+    // baudrate_reg passed in
+    // formula on page 11 of BCM2835 
+    PUT32(AUX_MU_BAUD,  baudrate_reg & 0xFFFF);
     
     // now, enable tx/rx (page 17)
     PUT32(AUX_MU_CNTL, 3);
