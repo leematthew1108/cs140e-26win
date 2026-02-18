@@ -112,7 +112,17 @@ int check(checker_t *c);
 int syscall_invoke_asm(int sysno, ...);
 
 // you will implement this.
-#define sys_lock_try(addr)     syscall_invoke_asm(SYS_TRYLOCK, addr)
+// #define sys_lock_try(addr)     syscall_invoke_asm(SYS_TRYLOCK, addr)
+// check-interleave.h
+static inline int sys_lock_try(volatile int *l) {
+    if(mode_get(cpsr_get()) == USER_MODE)
+        return syscall_invoke_asm(SYS_TRYLOCK, l);
+
+    // SUPER mode: do it directly
+    if(*l == 0) { *l = 1; return 1; }
+    return 0;
+}
+
 
 // a do-nothing syscall to test things.
 #define sys_test(x)          syscall_invoke_asm(SYS_TEST, x)

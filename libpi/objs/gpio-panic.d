@@ -1,10 +1,11 @@
-objs/gpio-panic.o: staff-src/gpio-panic.c rpi.h \
+objs/gpio-panic.o: staff-src/gpio-panic.c \
+ /Users/matthewlee/cs140e-26win/libpi/include/rpi.h \
  /Users/matthewlee/cs140e-26win/libpi/libc/demand.h \
  /Users/matthewlee/cs140e-26win/libpi/include/gpio.h \
  /Users/matthewlee/cs140e-26win/libpi/include/rpi-constants.h \
  /Users/matthewlee/cs140e-26win/libpi/include/your-prototypes.h
 
-rpi.h:
+/Users/matthewlee/cs140e-26win/libpi/include/rpi.h:
 
 /Users/matthewlee/cs140e-26win/libpi/libc/demand.h:
 

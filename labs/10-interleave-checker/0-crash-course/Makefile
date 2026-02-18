@@ -1,5 +1,12 @@
-PROGS += 0-nop1-example.c
-PROGS += 1-many-fn-example.c
+# PROGS += 0-nop1-example.c
+# PROGS += 1-many-fn-example.c
+PROGS += test-nops.c
+PROGS += test-hello.c
+PROGS += test-loop-prof.c
+PROGS += 2-mem-corrupt-test.c
+
+# shared library code (copied & modified from 1-many-fn-example.c)
+COMMON_SRC += single-step-lib.c
 
 L := $(CS140E_2026_PATH)/libpi/
 STAFF_OBJS += $(L)/staff-objs/staff-kmalloc.o

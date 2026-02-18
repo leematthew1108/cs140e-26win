@@ -23,6 +23,8 @@ void notmain(void) {
     // try with enable cache.
     enable_cache();
 
+    brk_verbose(0);
+
     struct checker c = cnt_mk_checker();
     int n;
     if(check(&c))

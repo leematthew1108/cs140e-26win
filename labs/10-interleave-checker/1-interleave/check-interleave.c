@@ -41,9 +41,20 @@ static int syscall_handler_full(regs_t *r) {
             // used to do a context switch from user->privileged.
             switchto((void*)arg0);
             panic("not reached\n");
-    case SYS_TRYLOCK:
-        panic("not handling yet\n");
+    case SYS_TRYLOCK: {
+        // panic("not handling yet\n");
+        pi_lock_t *l = (pi_lock_t *)arg0;   // arg0 is the pointer passed by user
 
+        int ok = 0;
+        if(*l == 0) {
+            *l = 1;
+            ok = 1;
+        }
+
+        r->regs[0] = ok;    // return value in r0
+        switchto(r);        // resume user code
+        not_reached();
+    }
     case SYS_TEST:
         printk("running empty syscall with arg=%d\n", arg0);
         return SYS_TEST;
@@ -65,11 +76,56 @@ static void single_step_handler_full(regs_t *r) {
 
     // r0 is in r->regs[0], r1 is in r->regs[1], ...
     uint32_t pc = r->regs[15];
+
+    // part 0
+    // if A returned, it'll jump to A_terminated via LR.
+    // we do NOT want to single-step the termination path.
+    if(pc == (uint32_t)A_terminated) {
+        brkpt_mismatch_stop();   // stop single stepping
+        switchto(r);             // resume so A_terminated runs normally
+    }
+
     uint32_t n = ++checker->inst_count;
-
-
     // TODO: you'll have to add code to do the switching here.
-    output("single-step handler: inst=%d: A:pc=%x\n", n,pc);
+    // output("single-step handler: inst=%d: A:pc=%x\n", n,pc);
+
+    // If we already switched successfully, we should not still be single-stepping.
+    // But just in case, finish A at full speed.
+    if(checker->switched_p) {
+        brkpt_mismatch_stop();
+        switchto(r);
+    }
+
+    // If we haven't reached the switch point yet: keep stepping.
+    if(n < checker->switch_on_inst_n) {
+        brkpt_mismatch_set(pc);
+        switchto(r);
+    }
+
+    // If we are at the switch point: try to run B.
+    if(n == checker->switch_on_inst_n) {
+        // record for debugging
+        checker->switch_addr = pc;
+
+        // IMPORTANT: checker is volatile, B expects non-volatile checker_t*
+        int ok = checker->B((void*)checker);
+
+        if(ok) {
+            checker->switched_p = 1;
+            checker->nswitches++;
+
+            // stop stepping so A runs to completion at full speed
+            brkpt_mismatch_stop();
+            switchto(r);
+        } else {
+            // B couldn't make progress, retry on next instruction
+            checker->skips++;
+            checker->switch_on_inst_n++;   // "retry on next instruction"
+
+            brkpt_mismatch_set(pc);
+            switchto(r);
+        }
+    }
 
     // recall: the weird way single step works: run the instruction 
     // at address <pc>, by setting up a mismatch fault for any other
@@ -222,7 +278,48 @@ int check(checker_t *c) {
     //  }
     // 
     //  return 0 if there were errors.
-    todo("implement true interleaving!\n");
+    // todo("implement true interleaving!\n");
+    checker = c;
+    c->interleaving_p = 1;
 
-    return 1;
+    for(unsigned i = 1; ; i++) {
+        unsigned start_target = i;
+
+        c->ntrials++;
+
+        c->init(c);
+
+        c->inst_count = 0;
+        c->switch_on_inst_n = i;
+        c->switched_p = 0;
+        c->skips = 0;
+        c->switch_addr = 0;
+
+        run_A_at_userlevel(c);
+
+        // If we never successfully switched:
+        if(!c->switched_p) {
+            // If A terminated before we even reached the original target,
+            // then i is beyond A's length, so we're done.
+            if(c->inst_count < start_target)
+                break;
+
+            // Otherwise: we reached the target but B never succeeded.
+            c->nerrors++;
+            brk_debug("ERROR: B never succeeded. start_target=%d inst_count=%d skips=%d\n",
+                    start_target, c->inst_count, c->skips);
+            output("ERROR: check failed when switched on address  instructions\n"); // for autograder
+            continue;
+        }
+
+        // If we did switch and run B successfully, we now just check final state.
+        if(!c->check(c)) {
+            c->nerrors++;
+            brk_debug("ERROR: check failed: switched at pc=%x (target=%d, inst_count=%d, skips=%d)\n",
+                    c->switch_addr, start_target, c->inst_count, c->skips);
+            output("ERROR: check failed when switched on address  instructions\n"); // for autograder
+        }
+    }
+
+    return c->nerrors == 0;
 }
