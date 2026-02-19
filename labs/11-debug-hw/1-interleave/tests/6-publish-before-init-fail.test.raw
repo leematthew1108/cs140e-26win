@@ -1,0 +1,23 @@
+DEBUG:done with options: dev name=</dev/cu.usbserial-210>, pi-prog=<./tests/6-publish-before-init-fail.bin>, trace=0
+opened tty port </dev/cu.usbserial-210>.
+DEBUG:my-install: tty-usb=</dev/cu.usbserial-210> program=<./tests/6-publish-before-init-fail.bin>: about to boot
+TRACE:simple_boot: sending 14304 bytes, crc32=8b1d6bc3
+BOOT:waiting for a start
+DEBUG:PRINT_STRING:pi sent print: <UART Matthew Lee: success: Received the program!>
+BOOT:bootloader: Done.
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=1, inst_count=5, skips=4)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=2, inst_count=5, skips=3)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=3, inst_count=5, skips=2)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=4, inst_count=5, skips=1)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=5, inst_count=5, skips=0)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x804c (target=6, inst_count=6, skips=0)
+ERROR: check failed when switched on address  instructions
+SUCCESS:publish-before-init failed as expected, ntrials=[8], nerrors=[6]
+DONE!!!
+
+bootloader: pi exited.  cleaning up

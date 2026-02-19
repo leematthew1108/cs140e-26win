@@ -1,0 +1,13 @@
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=1, inst_count=5, skips=4)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=2, inst_count=5, skips=3)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=3, inst_count=5, skips=2)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=4, inst_count=5, skips=1)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x8048 (target=5, inst_count=5, skips=0)
+ERROR: check failed when switched on address  instructions
+check-interleave.c:check:318:DEBUG:ERROR: check failed: switched at pc=0x804c (target=6, inst_count=6, skips=0)
+ERROR: check failed when switched on address  instructions
+SUCCESS:publish-before-init failed as expected, ntrials=
