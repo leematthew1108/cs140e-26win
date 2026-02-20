@@ -7,18 +7,18 @@
 // -----------------------------------------------------------------------------
 // CP15: Instruction Fault Status Register (IFSR) (Table 3-2, p 3-66)
 //   mrc p15, 0, <Rd>, c5, c0, 1
-cp_asm_get(cp15_ifsr, p15, 0, c5, c0, 1)   // IFSR
+cp_asm_get(cp15_ifsr, p15, 0, c5, c0, 1)   // IFSR (check instruction debug event)
 
 // -----------------------------------------------------------------------------
 // CP14 debug regs (Table 13-19)
 //
-// DSCR: Debug Status and Control Register (p13-7; table 13-19)
+// DSCR: Debug Status and Control Register (p13-7; table 13-19, p13-26)
 //   mrc/mcr p14, 0, <Rd>, c0, c1, 0
-cp_asm(cp14_dscr, p14, 0, c0, c1, 0)
+cp_asm(cp14_dscr, p14, 0, c0, c1, 0) // DSCR (enable debugging)
 
-// Breakpoint registers (Table 13-19, BVR/BCR rows):
-//   BVR y: mrc/mcr p14, 0, <Rd>, c0, cy, 4   (Opcode_2=4, CRm=cy)
-//   BCR y: mrc/mcr p14, 0, <Rd>, c0, cy, 5   (Opcode_2=5, CRm=cy)
+// Breakpoint registers (Table 13-19, BVR/BCR rows): (also 13-16, 13-17)
+//   BVR y: mrc/mcr p14, 0, <Rd>, c0, cy, 4   (Opcode_2=4, CRm=cy) (breakpoint address)
+//   BCR y: mrc/mcr p14, 0, <Rd>, c0, cy, 5   (Opcode_2=5, CRm=cy) (breakpoint control/configure)
 //
 // We use:
 //   - breakpoint 0 for mismatch (single-step)
@@ -29,11 +29,9 @@ cp_asm(cp14_bcr0, p14, 0, c0, c0, 5)
 cp_asm(cp14_bvr1, p14, 0, c0, c1, 4)
 cp_asm(cp14_bcr1, p14, 0, c0, c1, 5)
 
-// -----------------------------------------------------------------------------
-// Constants / bitfields
 
 // IFSR fault status field:
-// - If bit[10] == 0, the fault status is in bits[3:0] (same style as DFSR snippet).
+// - If bit[10] == 0, the fault status is in bits[3:0] 
 // - "Debug event" encodes as 0b0010 in FS[3:0] for debug prefetch aborts.
 enum { IFSR_FS_DEBUG_EVENT = 0b0010 };
 
@@ -43,7 +41,7 @@ enum { IFSR_FS_DEBUG_EVENT = 0b0010 };
 // b0001 = a breakpoint occured
 enum { DSCR_CAUSE_BREAKPOINT = 0b0001 };
 
-// BCR fields (p13-17 / p13-19 table summaries):
+// BCR fields (p13-17 / p13-19 table summaries): (Breakpoint Control Registers)
 // - enable: bit0
 // - privilege: bits[2:1]
 // - secure/non-secure match: bits[15:14] = 0b00
@@ -56,7 +54,7 @@ static inline uint32_t bcr_common_enable(uint32_t bcr) {
     bcr = bits_set(bcr, 1, 2, 0b11);
 
     // Byte Address Select: BVR is word address, 
-    // BCR[8:5] used to program subword matches (more on this)
+    // BCR[8:5] used to program subword matches
     // must be set to b1111
     bcr = bits_set(bcr, 5, 8, 0b1111);
 
@@ -81,8 +79,8 @@ void brkpt_match_init(void) {
     // staff_brkpt_match_init();
     uint32_t dscr = cp14_dscr_get();
     // p13-9 rule: monitor debug mode selected+enabled -> bit14 clear, bit15 set
-    dscr = bit_clr(dscr, 14);
-    dscr = bit_set(dscr, 15);
+    dscr = bit_clr(dscr, 14); // mode select: monitor debug mode is 0
+    dscr = bit_set(dscr, 15); // enable is 1
     cp14_dscr_set(dscr);
 }
 
@@ -96,7 +94,7 @@ void brkpt_match_set(uint32_t addr) {
     // Ensure debug enabled.
     brkpt_match_init();
 
-    // Code BVR1 with word-aligned address.(handle subwords with this??)
+    // Code BVR1 with word-aligned address.
     cp14_bvr1_set(addr & ~0b11u);
 
     // Code BCR1: match + enable + privilege + security config.

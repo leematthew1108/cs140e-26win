@@ -8,12 +8,12 @@
 // ----------------------------------------------------------------------------
 // CP15 fault registers (Table 3-2)
 //
-// DFSR: Data Fault Status Register  (p 3-64)
+// DFSR: Data Fault Status Register  (p 3-64) (source of last data fault)
 //   mrc p15, 0, <Rd>, c5, c0, 0
-// FAR:  Fault Address Register      (p 3-68)
+// FAR:  Fault Address Register      (p 3-68) (holds data address of the fault)
 //   mrc p15, 0, <Rd>, c6, c0, 0
-cp_asm_get(cp15_dfsr, p15, 0, c5, c0, 0)   // DFSR
-cp_asm_get(cp15_far,  p15, 0, c6, c0, 0)   // FAR
+cp_asm_get(cp15_dfsr, p15, 0, c5, c0, 0)   // DFSR  (macro for creating the getter function)
+cp_asm_get(cp15_far,  p15, 0, c6, c0, 0)   // FAR (data address for fault)
 
 // ----------------------------------------------------------------------------
 // CP14 debug registers (Table 13-19)
@@ -27,22 +27,21 @@ cp_asm_get(cp15_far,  p15, 0, c6, c0, 0)   // FAR
 //   mcr p14, 0, <Rd>, c0, c0, 6
 // WCR0: Watchpoint Control Register 0 (WCR row: op2=7, CRm=y; y=0 => c0)
 //   mcr p14, 0, <Rd>, c0, c0, 7
-cp_asm(cp14_dscr, p14, 0, c0, c1, 0)       // DSCR get/set
-cp_asm_get(cp14_wfar, p14, 0, c0, c6, 0)   // WFAR get
-cp_asm_set(cp14_wvr0, p14, 0, c0, c0, 6)   // WVR0 set
-cp_asm_set(cp14_wcr0, p14, 0, c0, c0, 7)   // WCR0 set
+cp_asm(cp14_dscr, p14, 0, c0, c1, 0)       // DSCR get/set (enable debugging)
+cp_asm_get(cp14_wfar, p14, 0, c0, c6, 0)   // WFAR get (fault pc)
+cp_asm_set(cp14_wvr0, p14, 0, c0, c0, 6)   // WVR0 set (word address for watchpoint)
+cp_asm_set(cp14_wcr0, p14, 0, c0, c0, 7)   // WCR0 set (subword config, store/load, enable)
 
 // keep track of what we are watching.
 static uint32_t watch_addr;
 
-// DFSR fault status field:
-// - If bit[10] == 0, the fault status is in bits[3:0] (lab snippet: "if bit[10]=0")
+// DFSR fault status field: (3-64) (source of last data fault)
+// - If bit[10] == 0, the fault status is in bits[3:0]
 // - "Debug event" encodes as 0b0010 in FS[3:0] for ARMv6 debug data aborts.
 enum { DFSR_FS_DEBUG_EVENT = 0b0010 };
 
-// DSCR[5:2] indicates which debug exception (cheat sheet p 13-11).
-// In practice we only need the watchpoint case here.
-// (This matches the lab’s convention used in staff solutions.)
+// DSCR[5:2] indicates which debug exception (p 13-11).
+// debug fault source can be watchpoint, breakpoint, or other stuff
 enum { DSCR_CAUSE_WATCHPOINT = 0b0010 };
 
 // was it a watchpoint fault?
@@ -53,7 +52,7 @@ enum { DSCR_CAUSE_WATCHPOINT = 0b0010 };
 int watchpt_fault_p(void) {
     uint32_t dfsr = cp15_dfsr_get();
 
-    // - If bit[10] == 0, the fault status is in bits[3:0] (lab snippet: "if bit[10]=0")
+    // If bit[10] == 0, the fault status is in bits[3:0]
     if(bit_is_on(dfsr, 10)) {
         return 0;
     }
@@ -120,7 +119,7 @@ int watchpt_on(uint32_t addr) {
     dscr = bit_set(dscr, 15);
     cp14_dscr_set(dscr);
 
-    // set wrc0 and wvr0
+    // set wrc0 and wvr0 (watchpoint control/value registers)
     uint32_t wcr = 0;
 
     // p 13-21: bits[8:5] byte address select.
@@ -139,8 +138,7 @@ int watchpt_on(uint32_t addr) {
 
     cp14_wcr0_set(wcr);
 
-    // handles subword access? (mentally recheck)
-    // WVR is a word address; clearing low 2 bits is the clean, explicit version.
+    // WVR is a word address
     cp14_wvr0_set(addr & ~0b11u);
 
     // Note: cp14_wcr0_set/cp14_wvr0_set already do prefetch_flush() via cp_asm_set.
