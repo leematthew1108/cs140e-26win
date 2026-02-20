@@ -1,12 +1,12 @@
-# PROGS += 0-nop1-example.c
-# PROGS += 1-many-fn-example.c
-PROGS += test-nops.c
-PROGS += test-hello.c
-PROGS += test-loop-prof.c
-PROGS += 2-mem-corrupt-test.c
+PROGS += 0-nop1-example.c
+PROGS += 1-many-fn-example.c
+# PROGS += test-nops.c
+# PROGS += test-hello.c
+# PROGS += test-loop-prof.c
+# PROGS += 2-mem-corrupt-test.c
 
 # shared library code (copied & modified from 1-many-fn-example.c)
-COMMON_SRC += single-step-lib.c
+# COMMON_SRC += single-step-lib.c
 
 # Lab 11 code i wrote to replace staff
 COMMON_SRC += breakpoint.c
