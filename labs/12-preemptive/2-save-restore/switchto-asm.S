@@ -6,19 +6,22 @@ MK_FN(switchto_user_asm)
     // setup sp to use as pointer to pc & cpsr for rfe
     // exception stack gets reset each time so its ok to use
     // and exception stack is banked
-    add sp, r0, #(15*4)
+    // add sp, r0, #(15*4)
+    mov sp, r0
 
     // advance the r0 to point to regs[1]
-    add r0, r0, #4
+    // add r0, r0, #4
 
     // load user r1-r14
-    ldm r0, {r1-r14}^
+    // (note problem with loading multiple if r0 is in the load list)
+    ldm sp, {r0-r14}^
 
     // restore user r0
-    sub r0, r0, #4
-    ldr r0, [r0]
+    // sub r0, r0, #4
+    // ldr r0, [r0]
 
     // use rfe to load PC and CPSR simultaneously 
+    add sp, sp, #(15*4)
     rfe sp
 
 @ NOTE:  set <cpsr> using the following instructon so GNU
@@ -27,7 +30,7 @@ MK_FN(switchto_user_asm)
 MK_FN(switchto_priv_asm)
     // b staff_switchto_priv_asm
     // get the target CPSR from regs[16]
-    ldr r1, [r0, #(16*4)]
+    ldr r1, [r0, #(16*4)] 
 
     // switch directly to target mode
     msr cpsr_cxsf, r1
@@ -101,7 +104,7 @@ MK_FN(cswitchto_priv_asm)
     mrs r2, cpsr
     str r2, [r0, #(16*4)] // cpsr is regs[16]
 
-    mov r0, r1 // next pointer was in r1, move it to r0 to prepare to call switchto_priv_asm
+    mov r0, r1 // next pointer is in r1 (passed in), move it to r0 to prepare to call switchto_priv_asm
 
     @ 2. just call the right switch routine: note, we should
     @    *not* reach this location when switching back!

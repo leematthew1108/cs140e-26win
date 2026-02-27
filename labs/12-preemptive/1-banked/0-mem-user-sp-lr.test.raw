@@ -1,0 +1,5 @@
+DEBUG:done with options: dev name=</dev/cu.usbserial-210>, pi-prog=<./0-mem-user-sp-lr.bin>, trace=0
+opened tty port </dev/cu.usbserial-210>.
+DEBUG:my-install: tty-usb=</dev/cu.usbserial-210> program=<./0-mem-user-sp-lr.bin>: about to boot
+TRACE:simple_boot: sending 8024 bytes, crc32=e6fdff27
+BOOT:waiting for a start
