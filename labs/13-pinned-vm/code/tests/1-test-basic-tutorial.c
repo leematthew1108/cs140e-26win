@@ -18,7 +18,6 @@
 
 #define MB(x) ((x)*1024*1024)
 
-// These are the default segments (segment = one MB)
 // that need to be mapped for our binaries so far
 // this quarter. 
 //
