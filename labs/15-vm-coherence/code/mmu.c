@@ -5,12 +5,19 @@
 #include "rpi-interrupts.h"
 #include "libc/helper-macros.h"
 #include "mmu-internal.h"
+#include "asm-helpers.h"
 
 // given.
 
 int mmu_is_enabled(void) {
     return cp15_ctrl_reg1_rd().MMU_enabled != 0;
 }
+
+// implemented in your-mmu-asm.S
+void mmu_disable_set_asm(cp15_ctrl_reg1_t c);
+void mmu_enable_set_asm(cp15_ctrl_reg1_t c);
+void cp15_set_procid_ttbr0(uint32_t proc_and_asid, void *pt); // fld_t --> void*
+
 
 // disable the mmu by setting control register 1
 // to <c:32>.
@@ -24,7 +31,8 @@ void mmu_disable_set(cp15_ctrl_reg1_t c) {
     // record if dcache on.
     uint32_t cache_on_p = c.C_unified_enable;
 
-    staff_mmu_disable_set_asm(c);
+    //staff_mmu_disable_set_asm(c);
+    mmu_disable_set_asm(c);
 
     // re-enable if it was on.
     if(cache_on_p) {
@@ -50,7 +58,8 @@ void mmu_disable(void) {
 // real work (you'll write this code next time).
 void mmu_enable_set(cp15_ctrl_reg1_t c) {
     assert(c.MMU_enabled);
-    staff_mmu_enable_set_asm(c);
+    // staff_mmu_enable_set_asm(c);
+    mmu_enable_set_asm(c);
 }
 
 // enable mmu by flipping enable bit.
@@ -66,7 +75,8 @@ void mmu_set_ctx(uint32_t pid, uint32_t asid, void *pt) {
     assert(asid!=0);
     assert(asid<64);
     // set_procid_ttbr0(pid, asid, pt);
-    staff_cp15_set_procid_ttbr0(pid << 8 | asid, pt);
+    //staff_cp15_set_procid_ttbr0(pid << 8 | asid, pt);
+    cp15_set_procid_ttbr0(pid << 8 | asid, pt);
 }
 
 // set so that we use armv6 memory.
@@ -76,25 +86,35 @@ void mmu_set_ctx(uint32_t pid, uint32_t asid, void *pt) {
 //  2. specify armv6 (no subpages).
 //  3. check that the coprocessor write succeeded.
 void mmu_init(void) { 
-    staff_mmu_init();
-    return;
+    // staff_mmu_init();
+    // return;
 
     // initialize the MMU hardware state
     mmu_reset();
 
     // trivial: RMW the xp bit in control reg 1.
     // leave mmu disabled.
-    unimplemented();
+    //unimplemented();
+    struct control_reg1 c1 = cp15_ctrl_reg1_rd();
+    c1.XP_pt = 1;
+
+    // Write the new config back 
+    // this function implemented in your-mmu-asm.S
+    cp15_ctrl_reg1_wr(c1);
 
     // make sure write succeeded.
-    struct control_reg1 c1 = cp15_ctrl_reg1_rd();
+    c1 = cp15_ctrl_reg1_rd();
     assert(c1.XP_pt);
     assert(!c1.MMU_enabled);
 }
 
 // read and return the domain access control register
 uint32_t domain_access_ctrl_get(void) {
-    return staff_domain_access_ctrl_get();
+    // return staff_domain_access_ctrl_get();
+    uint32_t r;
+    // B4-42: Read Domain Access Control Register (CP15 c3)
+    asm volatile("mrc p15, 0, %0, c3, c0, 0" : "=r" (r));
+    return r;
 }
 
 // NOTE: to stop duplicate symbol errors for
@@ -105,12 +125,19 @@ uint32_t domain_access_ctrl_get(void) {
 // set domain access control register to <r>
 __attribute__((weak))
 void domain_access_ctrl_set(uint32_t r) {
-    staff_domain_access_ctrl_set(r);
+    // staff_domain_access_ctrl_set(r);
+    // B4-42: Write to Domain Access Control Register (CP15 c3)
+    asm volatile("mcr p15, 0, %0, c3, c0, 0" :: "r" (r));
+    
+    prefetch_flush();
+    
+    // Verify the write succeeded
     assert(domain_access_ctrl_get() == r);
 }
 #if 0
 #endif
 
-cp15_ctrl_reg1_t cp15_ctrl_reg1_rd(void) {
-    return staff_cp15_ctrl_reg1_rd();
-}
+// implemented in your-mmu-asm.S
+// cp15_ctrl_reg1_t cp15_ctrl_reg1_rd(void) {
+//     return staff_cp15_ctrl_reg1_rd();
+// }
