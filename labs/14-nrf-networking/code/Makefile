@@ -1,5 +1,5 @@
 # you'll get rid of this
-STAFF_OBJS += staff-nrf-driver.o
+# STAFF_OBJS += staff-nrf-driver.o
 
 # the NRFs can be finicky about back to back runs.
 # if you want to go faster --- get rid of the sleep.
@@ -12,10 +12,12 @@ BOOTLOADER = sleep 1; my-install
 # PROGS := 0-ack-check.c
 
 # ordered easy to harder
-PROGS += $(wildcard tests/0-*.c)
-PROGS += $(wildcard tests/1-*.c)
-PROGS += $(wildcard tests/2-*.c)
-PROGS += $(wildcard tests/3-*.c)
+# PROGS += $(wildcard tests/0-*.c)
+# PROGS += $(wildcard tests/1-*.c)
+# PROGS += $(wildcard tests/2-*.c)
+# PROGS += $(wildcard tests/3-*.c)
+
+PROGS := tests/5-ping-pong-partner.c
 
 # starter code.  
 COMMON_SRC := nrf-hw-support.c nrf-public.c nrf-driver.c
