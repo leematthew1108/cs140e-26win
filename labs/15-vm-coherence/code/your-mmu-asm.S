@@ -170,27 +170,24 @@ MK_FN(mmu_disable_set_asm)
     // r0 contains the CP15 Control Register 1 value to write
     mov r1, #0
 
-    // 1. Clean and invalidate the data cache
+    // Clean and invalidate the data cache
     // Section 6.4.2 (Disable sequence, step 1): Must clean D-cache before MMU turns off so dirty entries write back to memory.
     CLEAN_INV_DCACHE(r1)
-    
-    // 2. Invalidate instruction cache
-    // Lab test requirement for enable/disable symmetry
-    INV_ICACHE(r1)
-
-    // 3. Guarantee completion
+    // Guarantee completion
     // B2-22: DSB ensures all cache maintenance finishes before MMU disables
     DSB(r1)
 
-    // 4. Turn off the MMU
+    // Turn off the MMU
     // Section 6.4.2 (Disable sequence, step 2): Write r0 to Control Register 1
     mcr p15, 0, r0, c1, c0, 0
-
-    // 5. Flush BTB
+    // Invalidate instruction cache
+    // Lab test requirement for enable/disable symmetry
+    INV_ICACHE(r1)
+    // Flush BTB
     // B2.7.5: Changing MMU state requires invalidating the Branch Target Buffer
     FLUSH_BTB(r1)
 
-    // 6. Guarantee completion and visibility
+    // Guarantee completion and visibility
     // B2.7.6 / B2-24: PrefetchFlush makes CP15 changes and BTB flush visible to instruction fetch
     DSB(r1)
     PREFETCH_FLUSH(r1)
@@ -207,23 +204,20 @@ MK_FN(mmu_enable_set_asm)
     // r0 contains the CP15 Control Register 1 value to write
     mov r1, #0
 
-    // 1. Invalidate instruction cache
-    // Section 6.4.1 (Enable sequence, step 3) & lab test requirement (refer to readme part 3)
-    INV_ICACHE(r1)
-    
-    // 2. Guarantee completion
-    // B2-22: DSB ensures cache invalidation completes
-    DSB(r1)
-
-    // 3. Turn on the MMU
+    // Turn on the MMU
     // Section 6.4.1 (Enable sequence, step 4): Write r0 to Control Register 1
     mcr p15, 0, r0, c1, c0, 0
 
-    // 4. Flush BTB
+    // Invalidate instruction cache
+    // Section 6.4.1 (Enable sequence, step 3) & lab test requirement (refer to readme part 3)
+    INV_ICACHE(r1)
+    // B2-22: DSB ensures cache invalidation completes
+    DSB(r1)
+    // Flush BTB
     // B2.7.5: Changing MMU state requires invalidating the Branch Target Buffer
     FLUSH_BTB(r1)
 
-    // 5. Guarantee completion and visibility
+    // Guarantee completion and visibility
     // B2.7.6 / B2-24: PrefetchFlush makes CP15 changes and BTB flush visible to instruction fetch
     DSB(r1)
     PREFETCH_FLUSH(r1)
