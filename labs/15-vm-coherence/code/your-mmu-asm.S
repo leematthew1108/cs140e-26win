@@ -209,7 +209,7 @@ MK_FN(mmu_enable_set_asm)
     mcr p15, 0, r0, c1, c0, 0
 
     // Invalidate instruction cache
-    // Section 6.4.1 (Enable sequence, step 3) & lab test requirement (refer to readme part 3)
+    // Section 6.4.1 & lab test requirement (refer to readme part 3)
     INV_ICACHE(r1)
     // B2-22: DSB ensures cache invalidation completes
     DSB(r1)
@@ -236,8 +236,8 @@ MK_FN(mmu_sync_pte_mods)
     // so the hardware page table walker can see it.
     CLEAN_INV_DCACHE(r0)
 
-    // 2. Guarantee visibility
-    // B2-23: DSB ensures the D-cache clean is complete and visible.
+    // 2. Guarantee completion
+    // B2-23: DSB ensures the D-cache clean is complete
     DSB(r0)
 
     // 3. Invalidate TLB
