@@ -16,7 +16,8 @@ vm_pt_t *vm_pt_alloc(unsigned n) {
     // trivial:
     // allocate pt with n entries [should look just like you did 
     // for pinned vm]
-    pt = staff_vm_pt_alloc(n);
+    // pt = staff_vm_pt_alloc(n);
+    pt = kmalloc_aligned(nbytes, 1<<14);
 
     demand(is_aligned_ptr(pt, 1<<14), must be 14-bit aligned!);
     return pt;
@@ -76,7 +77,7 @@ vm_map_sec(vm_pt_t *pt, uint32_t va, uint32_t pa, pin_t attr)
     assert(index < PT_LEVEL1_N);
 
     // 1. lookup the <pte> in <pt> using index.
-    vm_pte_t *pte = 0;
+    vm_pte_t *pte = &pt[index];
 
     // 2. use values in <attr> to set pte's:
     //  - nG
@@ -87,10 +88,27 @@ vm_map_sec(vm_pt_t *pt, uint32_t va, uint32_t pa, pin_t attr)
     //  - domain
     //  - XN
     // also: <tag> since its a 1mb section.
+    pte->tag = 0b10;
+    pte->nG = !attr.G; 
+    pte->domain = attr.dom;
+
+    // unpack AP_perm (AXP bit 2 | AP bits 0-1)
+    pte->AP  = bits_get(attr.AP_perm, 0, 1);
+    pte->APX = bit_get(attr.AP_perm, 2);
+
+    // unpack mem_attr (TEX bits 2-4 | C bit 1 | B bit 0)
+    pte->B   = bit_get(attr.mem_attr, 0);
+    pte->C   = bit_get(attr.mem_attr, 1);
+    pte->TEX = bits_get(attr.mem_attr, 2, 4);
+
+    pte->XN = 0; 
 
     // 3. set <pte->sec_base_addr> to the right physical section.
+    pte->sec_base_addr = pa >> 20;
 
-    return staff_vm_map_sec(pt,va,pa,attr);
+    mmu_sync_pte_mods();
+
+    // return staff_vm_map_sec(pt,va,pa,attr);
 
     // 4. you modified the page table!  
     //   - make sure you call your sync PTE (lab 15).
@@ -104,7 +122,12 @@ vm_map_sec(vm_pt_t *pt, uint32_t va, uint32_t pa, pin_t attr)
 // lookup 32-bit address va in pt and return the pte
 // if it exists, return 0 otherwise (use tag)
 vm_pte_t * vm_lookup(vm_pt_t *pt, uint32_t va) {
-    return staff_vm_lookup(pt,va);
+    // return staff_vm_lookup(pt,va);
+    unsigned index = va >> 20;
+    if (pt[index].tag == 0b10) {
+        return &pt[index];
+    }
+    return 0;
 }
 
 // manually translate <va> in page table <pt>
@@ -118,7 +141,17 @@ vm_pte_t * vm_lookup(vm_pt_t *pt, uint32_t va) {
 //   - the common unix kernel hack of returning (void*)-1 leads
 //     to really really nasty bugs.  so we don't.
 vm_pte_t *vm_xlate(uint32_t *pa, vm_pt_t *pt, uint32_t va) {
-    return staff_vm_xlate(pa,pt,va);
+    // return staff_vm_xlate(pa,pt,va);
+    vm_pte_t *pte = vm_lookup(pt, va);
+    if (!pte) {
+        return 0;
+    }
+    
+    if (pa) {
+        // sec_base_addr is the top 12 bits, va & 0xFFFFF is the 1MB offset
+        *pa = (pte->sec_base_addr << 20) | (va & 0xFFFFF);
+    }
+    return pte;
 }
 
 // compute the default attribute for each type.
@@ -145,7 +178,7 @@ static inline pin_t attr_mk(pr_ent_t *e) {
 // you setup the page table and asid. use  
 // kern_asid, and kern_pid.
 vm_pt_t *vm_map_kernel(procmap_t *p, int enable_p) {
-    return staff_vm_map_kernel(p,enable_p);
+    // return staff_vm_map_kernel(p,enable_p);
 
     // install at least the default handlers so we get 
     // error messages.
@@ -164,9 +197,64 @@ vm_pt_t *vm_map_kernel(procmap_t *p, int enable_p) {
     // 6. if <enable_p>=1
     //    - <mmu_sync_pte_mods> since modified page table.
     //    - <vm_mmu_enable> to turn on
-    vm_pt_t *pt = 0;
+    //vm_pt_t *pt = 0;
+
+    // 1. compute domains being used (0b01 = client mode, checks AP permissions)
+    uint32_t dom_reg = dom_perm(p->dom_ids, 0b01);
+
+    // 2. call vm_mmu_init to set domain reg and init MMU.
+    vm_mmu_init(dom_reg);
+
+    // 3. allocate a page table
+    vm_pt_t *pt = vm_pt_alloc(PT_LEVEL1_N);
+
+    // 4. walk through procmap, mapping each entry
+    for (unsigned i = 0; i < p->n; i++) {
+        pr_ent_t *e = &p->map[i];
+        pin_t attr = attr_mk(e);
+        
+        // Identity map: va == pa
+        vm_map_sec(pt, e->addr, e->addr, attr);
+    }
+
+    // 5. use vm_mmu_switch to setup kern_asid, pt, and kern_pid
+    vm_mmu_switch(pt, kern_pid, kern_asid);
+
+    // 6. enable if requested and verify
+    if (enable_p) {
+        mmu_sync_pte_mods();
+        vm_mmu_enable();
+        
+        // Verify mappings exist (must be done after MMU is on, or at least 
+        // after page table is populated)
+        for (unsigned i = 0; i < p->n; i++) {
+            assert(vm_lookup(pt, p->map[i].addr));
+        }
+    }
 
     // return page table.
     assert(pt);
     return pt;
+}
+
+// set the <AP> permissions in <pt> for the range [va, va+1MB*<nsec>) 
+// in page table <pt> to <perm>
+void vm_mprotect(vm_pt_t *pt, unsigned va, unsigned nsec, pin_t perm) {
+    assert(aligned(va, OneMB));
+
+    for (unsigned i = 0; i < nsec; i++) {
+        uint32_t current_va = va + (i * OneMB);
+        vm_pte_t *pte = vm_lookup(pt, current_va);
+        
+        if (!pte) {
+            panic("vm_mprotect: address 0x%x is not mapped!\n", current_va);
+        }
+
+        // Unpack the new AP and APX bits from the pin_t struct
+        pte->AP  = bits_get(perm.AP_perm, 0, 1);
+        pte->APX = bit_get(perm.AP_perm, 2);
+    }
+
+    // Flush the TLB and caches so the hardware immediately sees the new permissions!
+    mmu_sync_pte_mods();
 }
