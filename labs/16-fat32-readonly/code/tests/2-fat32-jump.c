@@ -76,7 +76,17 @@ void notmain() {
     // jump to it using BRANCHTO.  make sure
     // you skip the header!  (see in hello-f.list
     // and memmap.fixed in 13-fat32/hello-fixed
-    unimplemented();
+    // unimplemented();
+    // 1. Copy the entire file (header included) to the target link address
+    memcpy((void *)addr, f->data, f->n_data);
+
+    // 2. Flush the UART so our traces don't get cut off during the context switch
+    uart_flush_tx();
+
+    // 3. Jump over the header! p[1] contains the header size (16 bytes).
+    // This jumps exactly to 0x09000010 (<_start>)
+    uint32_t entry_point = addr + p[1];
+    BRANCHTO(entry_point);
 
     trace("returned from <%s>!\n", name);
 

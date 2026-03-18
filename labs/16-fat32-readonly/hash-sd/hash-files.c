@@ -5,7 +5,7 @@
 
 
 int main(int argc, char *argv[]) { 
-    char *path = getenv("CS140E_2025_PATH");
+    char *path = getenv("CS140E_2026_PATH");
     assert(path);
     unsigned n = strlen(path);
 
