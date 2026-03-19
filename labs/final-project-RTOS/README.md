@@ -1,4 +1,7 @@
-## Final Project: RTOS (RPi Zero, bare metal)
+## Final Project: RTOS (Real-Time OS)
+
+Name: Matthew Lee \
+Date: March 19, 2026
 
 This directory contains a small fixed-priority RTOS implemented on the RPi Zero, built from earlier class labs.
 
@@ -6,7 +9,7 @@ This directory contains a small fixed-priority RTOS implemented on the RPi Zero,
 
 ### Overview
 
-I implement:
+I implemented:
 
 - A **fixed-priority scheduler** (highest priority READY thread runs).
 - **True preemption** driven by the **ARM timer IRQ** (context switch happens inside the IRQ handler).
@@ -46,32 +49,13 @@ New for this final project:
   - fixed-priority selection, thread states (`READY/SLEEPING/BLOCKED`),
   - `rtos_sleep_until()`,
   - blocking mutex with a priority-sorted wait queue,
-  - instrumentation and end-of-run UART summary.
+  - end-of-run jitter & latency summary.
 - **Baseline build** plumbing in [`baseline-kernel.c`](baseline-kernel.c) (`#define NONPREEMPTIVE`).
 
 ### What Gets Printed (and what doesn’t)
 
 - Each kernel prints **one summary block at the end** (either `RTOS stats ...` or `BASELINE stats ...`).
 - We do **not** print per-tick or per-release logs in the final version (to keep timing cleaner and output small).
-
-### Architecture Sketch
-
-```mermaid
-flowchart TD
-  HW["ARM Timer IRQ\n(periodic)"] --> IRQ["IRQ Entry\n(save regs_t)"]
-  IRQ --> ISR["timer_irq_handler\n(ack, wake, schedule)"]
-  ISR --> SCH["Pick READY task\n(fixed priority scan)"]
-  SCH --> CTX["switchto(&next->regs)"]
-  CTX --> H["H thread\n(1kHz)"]
-  CTX --> M["M thread\n(2ms)"]
-  CTX --> L["L thread\n(5ms + mutex)"]
-
-  H --> SLEEP["rtos_sleep_until()"]
-  M --> SLEEP
-  L --> LOCK["mutex_lock()"]
-
-  LOCK --> WAIT["TASK_BLOCKED\nuntil mutex unlock"]
-```
 
 ### How the RTOS Works (Runtime)
 
@@ -120,8 +104,8 @@ This is a **single-core** CPU, so only one task runs at a time.
   - mutex blocking/unblocking,
   - and (in the RTOS build) timer-driven preemption.
 
-In the **RTOS build**, the timer interrupt can preempt `M`/`L` mid-compute to run `H`.
-In the **baseline build**, `H` typically starts only after the currently-running task reaches a voluntary yield point.
+In the **RTOS build**, the timer interrupt can preempt `M`/`L` at **timer-tick IRQ boundaries** (about 1kHz), so `H` can be dispatched promptly once it is READY.
+In the **baseline build**, the timer IRQ still updates time and wakeups, but usually returns to the interrupted non-idle task; a switch typically happens only at **voluntary switch points** (`sleep`, `block`, or SWI/yield).
 
 ### Workload (What `H` / `M` / `L` do)
 
@@ -131,14 +115,24 @@ Each task executes `N_RELEASES` iterations and then stops. The last-finishing ta
   - `rtos_sleep_until(next_release)`
   - record release/start jitter
   - `mutex_lock()` → bounded compute spin (`H_COMPUTE_US`) → `mutex_unlock()`
+  - then advances to the next period
 - **M (2ms)**:
   - `rtos_sleep_until(next_release)`
   - record jitter
-  - bounded compute (`M_COMPUTE_US`)
+  - bounded non-mutex compute (`M_COMPUTE_US`)
+  - then advances to the next period
 - **L (5ms, lowest priority)**:
   - `rtos_sleep_until(next_release)`
   - record jitter
-  - `mutex_lock()` → hold mutex (`L_HOLD_MUTEX_US`) → `mutex_unlock()`
+  - `mutex_lock()` → **mutex-protected hold** (`L_HOLD_MUTEX_US`) → `mutex_unlock()`
+  - then extra **non-mutex** compute (`L_EXTRA_COMPUTE_US`)
+  - then advances to the next period
+
+Clarification:
+
+- `H` sleeps first, then does mutex work after release.
+- In RTOS mode, preemption happens at timer IRQ boundaries.
+- `L`'s extra compute after unlock is non-critical-section work and is freely preemptible without extending mutex hold time.
 
 How a blocked mutex gets unblocked:
 
@@ -215,6 +209,12 @@ Key observations:
 
 - **Jitter**: RTOS reduces jitter for `H` and `M` (see table and plots).
 - **Mutex**: in this workload, mutex acquisition is usually fast, with occasional waiting when `H` arrives while `L` is inside its bounded critical section. Since we don’t implement priority inheritance, preemption does not automatically mean “lower mutex wait.”
+
+Why `H` lock latency is much higher in RTOS than baseline:
+
+- In RTOS, `H` is dispatched sooner after release, so it more often reaches `mutex_lock()` while `L` is still inside its bounded critical section; that wait time appears directly in `H` lock-latency stats.
+- In baseline, dispatch is deferred, so part of that waiting is shifted earlier into release/start delay (jitter), and by the time `H` runs the lock is often already free.
+- So baseline can show lower lock latency while still having worse response timing; the delay is redistributed, not eliminated.
 
 ### Offline Analysis (Python)
 
