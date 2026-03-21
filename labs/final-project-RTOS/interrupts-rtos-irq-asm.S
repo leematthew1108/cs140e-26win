@@ -1,15 +1,3 @@
-/* 
- * Assembly code for interrupt handling.  
- * Copy of the lab-4 timer-interrupt entry, but placed in this
- * final-project directory so our project can build independently.
- *
- * In the initial sanity-build we use the "minimal IRQ" path that
- * calls interrupt_vector(unsigned pc) in C.
- *
- * Later we will replace this IRQ entry with a full-context save so
- * the timer IRQ can perform true preemption.
- */
-
 #include "rpi-asm.h"
 
 @ enable/disable interrupts.
